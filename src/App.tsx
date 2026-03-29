@@ -10,6 +10,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 
 import { GoogleGenAI } from "@google/genai";
 import { AnimatedDashboard } from './components/AnimatedDashboard';
+import AuditReport from './AuditReport';
 
 type Lang = 'en' | 'fr' | 'es';
 
@@ -1122,7 +1123,8 @@ function AppContent() {
 
   const runAudit = async (retryCount = 0) => {
     if (!auditUrl) return;
-    
+    setAuditStep('analyzing');
+    setAuditError(null);
     let urlToAnalyze = auditUrl;
     if (!urlToAnalyze.startsWith('http://') && !urlToAnalyze.startsWith('https://')) {
       urlToAnalyze = 'https://' + urlToAnalyze;
@@ -1256,7 +1258,8 @@ function AppContent() {
             2. TONE: Be professional, data-driven, and slightly aggressive to create urgency.
             3. DATA COMPLETENESS: You MUST provide realistic data for ALL requested JSON fields. Do not leave arrays empty.
             4. NO SELF-IDENTIFICATION: Never say you are RankEngine or that the client is RankEngine.
-            5. LOCAL FOCUS: Find the city/region of the business and use it in your analysis.`,
+            5. LOCAL FOCUS: Use googleSearch to find the EXACT city/region. NEVER assume Paris. Search the URL first.
+            6. REAL DATA ONLY: Search competitors in the EXACT city found. Use real volumes for that city.`,
             tools: [
               { urlContext: {} },
               { googleSearch: {} }
@@ -2202,7 +2205,7 @@ function AppContent() {
                       </motion.div>
                     )}
 
-                    {auditStep === 'results' && auditData && (
+                    {auditStep === 'results' && auditData && auditData.companyName && (
                       <motion.div 
                         key="results"
                         initial={{ opacity: 0 }}
