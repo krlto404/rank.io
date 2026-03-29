@@ -1,0 +1,7 @@
+{
+  "name": "Marketing Agent to Win In",
+  "description": "The AI Marketing Agent to dominate Google and AI platforms like ChatGPT, Gemini, and Claude.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
