@@ -28,7 +28,7 @@ const aiLogos = [
   {
     name: 'ChatGPT',
     svg: (
-      <svg viewBox="0 0 2406 2406" className="w-8 h-8 scale-[1.2]" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+      <svg viewBox="0 0 2406 2406" className="w-8 h-8 " xmlns="http://www.w3.org/2000/svg" fill="currentColor">
         <path id="chatgpt-path" d="M1107.3 299.1c-197.999 0-373.9 127.3-435.2 315.3L650 743.5v427.9c0 21.4 11 40.4 29.4 51.4l344.5 198.515V833.3h.1v-27.9L1372.7 604c33.715-19.52 70.44-32.857 108.47-39.828L1447.6 450.3C1361 353.5 1237.1 298.5 1107.3 299.1zm0 117.5-.6.6c79.699 0 156.3 27.5 217.6 78.4-2.5 1.2-7.4 4.3-11 6.1L952.8 709.3c-18.4 10.4-29.4 30-29.4 51.4V1248l-155.1-89.4V755.8c-.1-187.099 151.601-338.9 339-339.2z"/>
         <use href="#chatgpt-path" transform="rotate(60 1203 1203)"/>
         <use href="#chatgpt-path" transform="rotate(120 1203 1203)"/>
@@ -72,10 +72,8 @@ const aiLogos = [
   {
     name: 'Grok',
     svg: (
-      <svg viewBox="0 0 100 100" className="w-8 h-8 scale-[1.2]" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-        <path d="M13.44 86.56L86.56 13.44L79.49 6.37L6.37 79.49L13.44 86.56Z" />
-        <path d="M44.16 11.23C36.72 12.33 29.84 15.22 23.94 19.55L29.35 24.96C34.07 21.6 39.46 19.38 45.24 18.52L44.16 11.23Z" />
-        <path d="M55.84 88.77C63.28 87.67 70.16 84.78 76.06 80.45L70.65 75.04C65.93 78.4 60.54 80.62 54.76 81.48L55.84 88.77Z" />
+      <svg viewBox="0 0 24 24" className="w-8 h-8 " fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.265 5.638 5.899-5.638z"/>
       </svg>
     )
   }
@@ -1945,7 +1943,7 @@ function AppContent() {
                   className="mb-8 flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-4 py-2 rounded-full"
                 >
                   <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="text-sm font-bold text-emerald-400 uppercase tracking-widest">Platform Live & Active</span>
+                  <span className="text-sm font-bold text-emerald-400 uppercase tracking-widest"></span>
                 </motion.div>
 
                 <motion.h1 
@@ -2006,15 +2004,7 @@ function AppContent() {
                   >
                     {t.navStart}
                   </button>
-                  <button 
-                    onClick={() => {
-                      const element = document.getElementById('how-it-works');
-                      element?.scrollIntoView({ behavior: 'smooth' });
-                    }}
-                    className="bg-white/5 text-white border border-white/10 px-8 py-4 rounded-full font-bold text-lg hover:bg-white/10 transition-all hover:-translate-y-1"
-                  >
-                    {t.navHow}
-                  </button>
+
                 </motion.div>
               </motion.div>
             </motion.div>
@@ -2963,10 +2953,10 @@ function AppContent() {
         {auditStep === 'idle' && (
           <div className="mt-20 sm:mt-32 grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-8">
             {[
-              { label: t.statSitesIndexed, value: 12400, suffix: '+' },
-              { label: t.statLeadsGenerated, value: 850, suffix: 'k' },
-              { label: t.statAvgRoi, value: 320, suffix: '%' },
-              { label: t.statCitiesCovered, value: 450, suffix: '+' }
+              { label: t.statSitesIndexed, value: 47, suffix: '+' },
+              { label: t.statLeadsGenerated, value: 312, suffix: '+' },
+              { label: t.statAvgRoi, value: 180, suffix: '%' },
+              { label: t.statCitiesCovered, value: 12, suffix: '+' }
             ].map((stat, i) => (
               <motion.div 
                 key={i}
@@ -3017,7 +3007,7 @@ function AppContent() {
                       <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
                       <div className="relative z-10 flex flex-col sm:flex-row items-center gap-8">
                         <div className="relative w-32 h-32 flex items-center justify-center">
-                          <svg className="w-full h-full transform -rotate-90 drop-shadow-[0_0_15px_rgba(16,185,129,0.4)]" viewBox="0 0 100 100">
+                          <svg className="w-full h-full transform -rotate-90 drop-shadow-[0_0_15px_rgba(16,185,129,0.4)]" viewBox="0 0 24 24">
                             <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="8" />
                             <circle 
                               cx="50" cy="50" r="45" fill="none" stroke="#10b981" strokeWidth="8" 
@@ -3465,51 +3455,6 @@ function AppContent() {
                   </div>
                 </motion.div>
               ))}
-            </div>
-          </div>
-        )}
-
-        {/* Comparison Table */}
-        {auditStep === 'idle' && (
-          <div className="mt-32 sm:mt-40 md:mt-48 pt-16 sm:pt-20 md:pt-24 border-t border-white/10 relative">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/2 h-px bg-gradient-to-r from-transparent via-emerald-500/30 to-transparent" />
-            <div className="text-center mb-12 sm:mb-16 md:mb-20">
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight mb-4 sm:mb-6 text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.1)] px-4">
-                {t.landingWhyChooseUs}
-              </h2>
-            </div>
-            <div className="max-w-5xl mx-auto overflow-x-auto pb-8 px-4 sm:px-0">
-              <div className="bg-black/40 rounded-[1.5rem] sm:rounded-[2rem] md:rounded-[2.5rem] border border-white/5 shadow-[0_0_40px_-10px_rgba(255,255,255,0.05)] overflow-hidden relative group hover:border-emerald-500/30 transition-all backdrop-blur-sm min-w-[600px]">
-                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                <table className="w-full text-left border-collapse relative z-10">
-                  <thead>
-                    <tr className="border-b border-white/10 bg-white/5">
-                      <th className="py-4 px-4 sm:py-6 sm:px-6 md:py-8 md:px-8 text-white font-bold uppercase tracking-widest text-xs sm:text-sm opacity-80">Features</th>
-                      <th className="py-4 px-4 sm:py-6 sm:px-6 md:py-8 md:px-8 text-emerald-400 font-black text-lg sm:text-xl drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]">RankEngine.ai</th>
-                      <th className="py-4 px-4 sm:py-6 sm:px-6 md:py-8 md:px-8 text-white font-bold uppercase tracking-widest text-xs sm:text-sm opacity-80">Traditional SEO</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                    {[
-                      { feature: 'AI Semantic Mapping', us: true, them: false },
-                      { feature: 'Instant Local Indexing', us: true, them: false },
-                      { feature: 'AEO Optimization', us: true, them: false },
-                      { feature: 'Automated Content', us: true, them: 'Partial' },
-                      { feature: 'Real-time ROI Tracking', us: true, them: false },
-                    ].map((row, i) => (
-                      <tr key={i} className="hover:bg-white/[0.04] transition-colors group/row">
-                        <td className="py-4 px-4 sm:py-5 sm:px-6 md:py-6 md:px-8 text-white font-bold text-lg sm:text-xl group-hover/row:text-emerald-400 transition-colors opacity-90">{row.feature}</td>
-                        <td className="py-4 px-4 sm:py-5 sm:px-6 md:py-6 md:px-8">
-                          {row.us === true ? <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.3)]"><CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" /></div> : <span className="text-white font-bold opacity-80">{row.us}</span>}
-                        </td>
-                        <td className="py-4 px-4 sm:py-5 sm:px-6 md:py-6 md:px-8">
-                          {row.them === true ? <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 text-white opacity-60" /> : row.them === false ? <X className="w-5 h-5 sm:w-6 sm:h-6 text-white opacity-40" /> : <span className="text-white font-bold px-2 py-0.5 sm:px-3 sm:py-1 bg-white/5 rounded-full text-xs sm:text-sm border border-white/10 opacity-80">{row.them}</span>}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
             </div>
           </div>
         )}
