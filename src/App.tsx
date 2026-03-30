@@ -1246,11 +1246,11 @@ function AppContent() {
       let response;
       try {
         response = await ai.models.generateContent({
-          model: "gemini-3-flash-preview",
+          model: "gemini-2.0-flash",
           contents: [{ parts: [{ text: prompt }] }],
           config: { 
             responseMimeType: "application/json",
-            systemInstruction: `You are a world-class SEO and AI Search auditor. 
+            systemInstruction: `You are a world-class SEO auditor. You MUST use the urlContext tool to actually visit and read ${urlToAnalyze} before writing anything. Then use googleSearch to find real competitors. All data must come from what you actually found, not from imagination. 
             Your goal is to analyze the URL provided and convince the business owner that they are losing a massive amount of money by being invisible on AI search engines (ChatGPT, Gemini, Perplexity) and Google Maps. 
             
             STRICT RULES:
@@ -1273,7 +1273,7 @@ function AppContent() {
         setAnalysisProgress(45);
         setCurrentTask("Tentative de récupération des données via recherche Google alternative...");
         response = await ai.models.generateContent({
-          model: "gemini-3-flash-preview",
+          model: "gemini-2.0-flash",
           contents: [{ parts: [{ text: prompt }] }],
           config: { 
             responseMimeType: "application/json",
