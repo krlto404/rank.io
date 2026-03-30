@@ -2211,6 +2211,18 @@ function AppContent() {
                     )}
 
                     {auditStep === 'results' && auditData && auditData.companyName && (
+                      <motion.div key="results" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                        <div className="flex justify-between items-center pb-6 border-b border-white/10 mb-8">
+                          <div>
+                            <div className="flex items-center gap-2 text-emerald-400 mb-1 text-sm font-mono">{auditUrl}</div>
+                            <h3 className="text-2xl font-bold">Rapport d'Intelligence de Visibilité</h3>
+                          </div>
+                          <button onClick={() => setAuditStep('idle')} className="px-5 py-2 bg-emerald-500 text-black rounded-xl font-bold hover:bg-emerald-400 transition-all">Nouvel Audit</button>
+                        </div>
+                        <AuditReport data={auditData} url={auditUrl} onContact={() => setView('conversion')} />
+                      </motion.div>
+                    )}
+                    {auditStep === 'results' && auditData && auditData.companyName && false && (
                       <motion.div 
                         key="results"
                         initial={{ opacity: 0 }}
