@@ -11,6 +11,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { GoogleGenAI } from "@google/genai";
 import { AnimatedDashboard } from './components/AnimatedDashboard';
 import AuditReport from './AuditReport';
+import { getRealSEOData } from './serpapi';
 
 type Lang = 'en' | 'fr' | 'es';
 
@@ -1126,6 +1127,12 @@ function AppContent() {
     setAuditStep('analyzing');
     setAuditError(null);
     let urlToAnalyze = auditUrl;
+    if (!urlToAnalyze.startsWith('http')) urlToAnalyze = 'https://' + urlToAnalyze;
+    let realData: any = { city: '', competitors: [], snippet: '' };
+    try {
+      const key = import.meta.env.VITE_SERPAPI_KEY || '';
+      if (key) { realData = await getRealSEOData(urlToAnalyze, key); }
+    } catch(e) { console.warn('SerpAPI error', e); }
     if (!urlToAnalyze.startsWith('http://') && !urlToAnalyze.startsWith('https://')) {
       urlToAnalyze = 'https://' + urlToAnalyze;
     }
