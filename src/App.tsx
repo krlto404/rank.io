@@ -1258,18 +1258,10 @@ function AppContent() {
             2. TONE: Be professional, data-driven, and slightly aggressive to create urgency.
             3. DATA COMPLETENESS: You MUST provide realistic data for ALL requested JSON fields. Do not leave arrays empty.
             4. NO SELF-IDENTIFICATION: Never say you are RankEngine or that the client is RankEngine.
-5. LOCAL FOCUS - MANDATORY STEPS:
-            - FIRST: Use googleSearch to search the exact URL "${urlToAnalyze}"
-            - SECOND: Read the page content to find city, address, phone number
-            - THIRD: Search "${urlToAnalyze} mentions légales" to confirm
-            - NEVER EVER use Paris as default - it is almost always wrong
-            - Small cities exist: Lyon, Marseille, Bordeaux, Toulouse, Nantes, etc.
-            6. COMPETITORS: Only list businesses you actually find via googleSearch in the EXACT same city
-            7. KEYWORD VOLUMES: Use realistic local volumes - a city of 500k people = max 2000 searches/month per keyword
-            8. HOOK: Must mention the REAL city found, REAL industry found
-            9. SEO SCORE: Base it on real signals - no meta description = -20pts, no GBP = -15pts, etc.
-            10. NEVER invent data - if you cannot find something, say you could not find it
-            11. extractedLocation MUST be the exact city found on the website, not a guess`,
+5. LOCAL FOCUS: Use googleSearch to search the URL and find real city/region. Never default to Paris.
+            6. COMPETITORS: Use googleSearch to find 3 real local competitors in same city and industry.
+            7. ALL JSON fields must be filled with realistic data. Never leave arrays empty.
+            8. Keyword volumes must be realistic for the city population size.`,
             tools: [
               { urlContext: {} },
               { googleSearch: {} }
