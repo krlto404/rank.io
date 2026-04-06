@@ -3,81 +3,100 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { Component, useState, ReactNode, ErrorInfo } from 'react';
+import React, { Component, useState, useEffect, ReactNode, ErrorInfo } from 'react';
 import { useScroll, useTransform, motion, AnimatePresence } from 'motion/react';
 import { ArrowRight, Search, Activity, Target, TrendingUp, Zap, CheckCircle2, Globe, BarChart3, X, Loader2, Bot, Database, Sparkles, MapPin, MousePointer2, LineChart as LineChartIcon, Users, Shield, Layout, FileText, Settings, Bell, User, ArrowLeft, MessageSquare, AlertCircle, Brain, PenTool, Rocket, Lock, Share2, Download, Eye, Smile, Award, CheckCircle, ArrowUpRight, Play, Mail, DollarSign, ListChecks, Cpu, Info, Quote, Check, ShieldCheck } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, BarChart, Bar, Cell } from 'recharts';
 
 import { GoogleGenAI } from "@google/genai";
 import { AnimatedDashboard } from './components/AnimatedDashboard';
-import AuditReport from './AuditReport';
-import { getRealSEOData } from './serpapi';
+
+const RenkLogo = ({ className = "h-8 w-auto", variant = "large" }: { className?: string, variant?: "large" | "small" }) => (
+  <img 
+    src={variant === "small" ? "/logo-renk-small.png" : "/logo-renk.png"} 
+    alt="Renk Logo" 
+    className={className}
+    referrerPolicy="no-referrer"
+  />
+);
+
+const TypingSearch = () => {
+  const words = ["Google", "ChatGPT", "Gemini", "Claude", "Perplexity", "Grok"];
+  const [index, setIndex] = useState(0);
+  const [text, setText] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [speed, setSpeed] = useState(150);
+
+  useEffect(() => {
+    const handleTyping = () => {
+      const currentWord = words[index];
+      if (isDeleting) {
+        setText(currentWord.substring(0, text.length - 1));
+        setSpeed(50);
+      } else {
+        setText(currentWord.substring(0, text.length + 1));
+        setSpeed(150);
+      }
+
+      if (!isDeleting && text === currentWord) {
+        setTimeout(() => setIsDeleting(true), 2000);
+      } else if (isDeleting && text === "") {
+        setIsDeleting(false);
+        setIndex((prev) => (prev + 1) % words.length);
+      }
+    };
+
+    const timer = setTimeout(handleTyping, speed);
+    return () => clearTimeout(timer);
+  }, [text, isDeleting, index, speed]);
+
+  return (
+    <div className="relative max-w-2xl mx-auto mt-2 px-4">
+      <div className="flex items-center bg-white border border-gray-200 rounded-2xl px-6 py-4 sm:py-6 shadow-[0_20px_50px_rgba(0,0,0,0.1)] group transition-all duration-500 hover:border-primary/30 hover:bg-gray-50">
+        <div className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-primary/10 to-secondary/10 mr-4 flex-shrink-0">
+          <Search className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
+        </div>
+        <div className="flex-1 text-left overflow-hidden">
+          <span className="text-black font-bold text-2xl sm:text-4xl md:text-5xl tracking-tight block truncate">
+            {text}
+            <span className="inline-block w-[3px] h-[0.8em] bg-primary ml-1 align-middle animate-pulse" />
+          </span>
+        </div>
+      </div>
+      
+      {/* Decorative elements */}
+      <div className="absolute -top-10 -right-10 w-32 h-32 bg-primary/10 rounded-full blur-3xl -z-10 animate-pulse" />
+      <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-secondary/10 rounded-full blur-3xl -z-10 animate-pulse" />
+    </div>
+  );
+};
 
 type Lang = 'en' | 'fr' | 'es';
 
 const aiLogos = [
   {
     name: 'Google',
-    svg: (
-      <svg viewBox="0 0 24 24" className="w-8 h-8" xmlns="http://www.w3.org/2000/svg">
-        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-      </svg>
-    )
+    svg: <img src="/icons8-google-94.png" alt="Google" className="w-8 h-8 object-contain" referrerPolicy="no-referrer" />
   },
   {
     name: 'ChatGPT',
-    svg: (
-      <svg viewBox="0 0 2406 2406" className="w-8 h-8 " xmlns="http://www.w3.org/2000/svg" fill="currentColor">
-        <path id="chatgpt-path" d="M1107.3 299.1c-197.999 0-373.9 127.3-435.2 315.3L650 743.5v427.9c0 21.4 11 40.4 29.4 51.4l344.5 198.515V833.3h.1v-27.9L1372.7 604c33.715-19.52 70.44-32.857 108.47-39.828L1447.6 450.3C1361 353.5 1237.1 298.5 1107.3 299.1zm0 117.5-.6.6c79.699 0 156.3 27.5 217.6 78.4-2.5 1.2-7.4 4.3-11 6.1L952.8 709.3c-18.4 10.4-29.4 30-29.4 51.4V1248l-155.1-89.4V755.8c-.1-187.099 151.601-338.9 339-339.2z"/>
-        <use href="#chatgpt-path" transform="rotate(60 1203 1203)"/>
-        <use href="#chatgpt-path" transform="rotate(120 1203 1203)"/>
-        <use href="#chatgpt-path" transform="rotate(180 1203 1203)"/>
-        <use href="#chatgpt-path" transform="rotate(240 1203 1203)"/>
-        <use href="#chatgpt-path" transform="rotate(300 1203 1203)"/>
-      </svg>
-    )
+    svg: <img src="/icons8-chatgpt-94.png" alt="ChatGPT" className="w-8 h-8 object-contain" referrerPolicy="no-referrer" />
   },
   {
     name: 'Gemini',
-    svg: (
-      <svg viewBox="0 0 24 24" className="w-8 h-8 scale-90" xmlns="http://www.w3.org/2000/svg">
-        <path d="M12.0001 0C12.0001 6.62742 17.3727 12 24 12C17.3727 12 12.0001 17.3726 12.0001 24C12.0001 17.3726 6.62746 12 0 12C6.62746 12 12.0001 6.62742 12.0001 0Z" fill="url(#gemini-grad)"/>
-        <defs>
-          <linearGradient id="gemini-grad" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
-            <stop stopColor="#4285F4"/>
-            <stop offset="0.5" stopColor="#9B72CB"/>
-            <stop offset="1" stopColor="#D96570"/>
-          </linearGradient>
-        </defs>
-      </svg>
-    )
+    svg: <img src="/icons8-gemini-ai-94.png" alt="Gemini" className="w-8 h-8 object-contain" referrerPolicy="no-referrer" />
   },
   {
     name: 'Claude',
-    svg: (
-      <svg viewBox="0 0 24 24" className="w-8 h-8 scale-110" xmlns="http://www.w3.org/2000/svg">
-        <path d="M12 2.5a1.5 1.5 0 0 1 1.5 1.5v4.6l4-2.3a1.5 1.5 0 1 1 1.5 2.6l-4 2.3 4 2.3a1.5 1.5 0 1 1-1.5 2.6l-4-2.3v4.6a1.5 1.5 0 1 1-3 0v-4.6l-4 2.3a1.5 1.5 0 1 1-1.5-2.6l4-2.3-4-2.3a1.5 1.5 0 1 1 1.5-2.6l4 2.3V4a1.5 1.5 0 0 1 1.5-1.5z" fill="#D97757"/>
-      </svg>
-    )
+    svg: <img src="/icons8-3d-claude-ai-logo-94.png" alt="Claude" className="w-8 h-8 object-contain" referrerPolicy="no-referrer" />
   },
   {
     name: 'Perplexity',
-    svg: (
-      <svg viewBox="0 0 24 24" className="w-8 h-8 scale-90" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
-        <path d="M22.3977 7.0896h-2.3106V.0676l-7.5094 6.3542V.1577h-1.1554v6.1966L4.4904 0v7.0896H1.6023v10.3976h2.8882V24l6.932-6.3591v6.2005h1.1554v-6.0469l6.9318 6.1807v-6.4879h2.8882V7.0896zm-3.4657-4.531v4.531h-5.355l5.355-4.531zm-13.2862.0676 4.8691 4.4634H5.6458V2.6262zM2.7576 16.332V8.245h7.8476l-6.1149 6.1147v1.9723H2.7576zm2.8882 5.0404v-3.8852h.0001v-2.6488l5.7763-5.7764v7.0111l-5.7764 5.2993zm12.7086.0248-5.7766-5.1509V9.0618l5.7766 5.7766v6.5588zm2.8882-5.0652h-1.733v-1.9723L13.3948 8.245h7.8478v8.087z"/>
-      </svg>
-    )
+    svg: <img src="/icons8-3d-perplexity-ai-logo-94.png" alt="Perplexity" className="w-8 h-8 object-contain" referrerPolicy="no-referrer" />
   },
   {
     name: 'Grok',
-    svg: (
-      <svg viewBox="0 0 24 24" className="w-8 h-8 " fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.265 5.638 5.899-5.638z"/>
-      </svg>
-    )
+    svg: <img src="/icons8-3d-grey-grok-ai-logo-94.png" alt="Grok" className="w-8 h-8 object-contain" referrerPolicy="no-referrer" />
   }
 ];
 
@@ -191,48 +210,47 @@ const translations = {
   en: {
     navPricing: "Pricing",
     navHow: "Strategy",
-    navStart: "Run Free Audit",
+    navStart: "Free Audit",
     heroBadge: "The AI-First SEO Engine",
     heroTitle1: "Improve your visibility on",
-    heroTitle2: "Google, ChatGPT and beyond.",
-    heroSub: "The first audit tool that actually sells for you.",
-    feat1Title: "Google Domination",
-    feat1Desc: "Mass-generate hyper-targeted local landing pages that capture 100% of your city's search volume.",
-    feat2Title: "AI Recommendation (AEO)",
-    feat2Desc: "Our invisible semantic optimization ensures your brand is the primary citation in AI-powered search results.",
-    feat3Title: "Autopilot Authority",
-    feat3Desc: "Continuous content generation and technical SEO that builds long-term domain authority without lifting a finger.",
-    howTitle: "How it works",
-    howSub: "Three steps to local dominance.",
-    step1Title: "Semantic Mapping",
-    step1Desc: "We identify the exact intent behind local searches and AI queries in your specific territory.",
-    step2Title: "Massive Deployment",
-    step2Desc: "Our engine deploys dozens of high-converting pages, blog posts, and FAQs optimized for both humans and bots.",
-    step3Title: "Market Lock",
-    step3Desc: "We monitor, index, and update your content. One client per industry per city. Total exclusivity.",
-    priceTitle: "Transparent Growth Plans",
-    priceSub: "Enterprise-grade SEO performance at a fraction of the cost.",
-    planName: "Market Leader",
-    planSub: "Everything you need to own your local market.",
+    heroSub: "Don't let your competitors take all the space. We position your business where your customers are searching today: on Google and at the heart of AI responses.",
+    feat1Title: "Total Exclusivity (50km)",
+    feat1Desc: "We work with only one professional per industry and per area. If we partner with you, we refuse your competitors. You get 100% of the results.",
+    feat2Title: "AI SEO (LLM SEO)",
+    feat2Desc: "Your future clients are already searching on ChatGPT, Claude, and Gemini. We position your business as the obvious recommendation on these new artificial intelligences.",
+    feat3Title: "100% Automated Technology",
+    feat3Desc: "Our artificial intelligence manages everything: from auditing to content creation. The result? A faster, higher-performing strategy that's much more affordable than a traditional agency.",
+    howTitle: "Our Acquisition Method",
+    howSub: "A clear 3-step strategy to dominate your geographical area on Google and AIs.",
+    step1Title: "1. Free Audit & Strategy",
+    step1Desc: "We analyze your local market. We identify exactly what your customers are searching for on Google and artificial intelligences to create a custom action plan.",
+    step2Title: "2. Starter Pack ($499)",
+    step2Desc: "Immediate creation of 50 ultra-optimized contents: 10 service pages, 15 city pages, 10 articles, 10 AI FAQs, and 5 conversion pages. You are visible everywhere, right away.",
+    step3Title: "3. Monthly Growth ($199)",
+    step3Desc: "Every month, we add 20 new targeted contents and 10 Google Business Profile posts. Your visibility continuously increases, your competitors disappear.",
+    priceTitle: "A Simple and Transparent Offer",
+    priceSub: "Cutting-edge technology finally accessible to freelancers and local SMEs.",
+    planName: "Local Domination",
+    planSub: "Guaranteed exclusivity: 1 client per industry within a 50km radius.",
     planPrice: "$499",
-    planSetup: "setup",
-    planMo: "+ $199/mo maintenance",
-    check1: "50+ Targeted Local Pages",
-    check2: "AEO Optimization (ChatGPT/Gemini)",
-    check3: "Monthly Authority Content",
-    check4: "Instant Google Indexing",
-    check5: "Real-time Performance Dashboard",
-    check6: "Dedicated Growth Manager",
-    planCta: "Claim Your Territory",
-    auditTitle: "Deep AI Audit",
-    auditSub: "Analyze your website's semantic visibility and local market potential in real-time.",
-    auditPlaceholder: "Enter your URL (e.g. https://yourbusiness.com)",
-    auditBtn: "Analyze Visibility",
-    auditAnalyzing: "Crawling semantic data...",
-    auditKeywords: "Mapping local competition...",
-    auditStrategy: "Building growth roadmap...",
-    auditBadge1: "Real-time Analysis",
-    auditBadge2: "AI-Powered",
+    planSetup: "Starter Pack (50 contents)",
+    planMo: "then $199/month (no commitment)",
+    check1: "100% free initial audit",
+    check2: "50 Google & AI contents (Starter Pack)",
+    check3: "20 new contents every month",
+    check4: "10 Google Business posts per month",
+    check5: "ChatGPT, Claude, Gemini optimization",
+    check6: "Total exclusivity in your area (50km)",
+    planCta: "Check my area's availability",
+    auditTitle: "Get Your Free Audit",
+    auditSub: "Instantly discover if your sector is still available and analyze your growth potential.",
+    auditPlaceholder: "Enter your website address (e.g., www.my-business.com)",
+    auditBtn: "Run my Free Audit",
+    auditAnalyzing: "Analyzing your local market...",
+    auditKeywords: "Checking area availability...",
+    auditStrategy: "Creating your custom action plan...",
+    auditBadge1: "Immediate Result",
+    auditBadge2: "Google & AI Analysis",
     auditResults: "Visibility Intelligence Report",
     scoreVisibility: "Visibility",
     scoreSentiment: "Sentiment",
@@ -246,7 +264,17 @@ const translations = {
     auditKeywordsTitle: "High-Intent Keywords",
     auditSeoTitle: "SEO & AEO Optimization",
     auditVisualTitle: "Strategic Roadmap",
-    auditLivePreviewBtn: "Preview Landing Pages",
+    auditActionPlan: "Action Plan (90 Days)",
+    auditPhase1: "Days 1-30",
+    auditPhase1Title: "Starter Pack",
+    auditPhase1Desc: "Creation and publication of your first 50 ultra-optimized contents (Google & AI).",
+    auditPhase2: "Days 31-60",
+    auditPhase2Title: "Local Domination",
+    auditPhase2Desc: "Massive indexing and positioning of your business in your 50km area.",
+    auditPhase3: "Days 61-90",
+    auditPhase3Title: "Monthly Growth",
+    auditPhase3Desc: "Addition of 20 new contents and 10 Google Business posts to widen the gap.",
+    auditLivePreviewBtn: "Preview Pages",
     auditDeployBtn: "Execute Strategy",
     auditReport: "Audit Report",
     auditStrategic: "Strategic Growth Plan",
@@ -274,28 +302,28 @@ const translations = {
     dashActivity: "Recent Activity",
     dashLast7: "Last 7 days",
     dashLast30: "Last 30 days",
-    dashBack: "Back to Landing",
+    dashBack: "Back to Home",
     dashOverview: "Overview",
     statTraffic: "Total Traffic",
     statKeywords: "Keywords Ranked",
     statLeads: "Leads Generated",
     statAuthority: "Domain Authority",
-    testimonialsTitle: "Trusted by Local Leaders",
-    testimonialsSub: "Join 500+ businesses dominating their local markets with RankEngine.",
-    formTitle: "Start Your AI SEO Journey",
-    formSub: "Join 500+ businesses dominating their local markets with RankEngine.ai. Get started today.",
-    labelBiz: "Business Name",
-    labelUrl: "Website URL",
-    labelCity: "Target Region",
-    labelEmail: "Work Email",
-    btnCheck: "Get Started Now",
+    testimonialsTitle: "They Dominate Their Sector",
+    testimonialsSub: "Artisans and SMEs who chose exclusivity and innovation.",
+    formTitle: "Reserve Your Exclusivity",
+    formSub: "Check if your industry is still available in your 50km area. First come, first served.",
+    labelBiz: "Your Business Name",
+    labelUrl: "Current Website (optional)",
+    labelCity: "Service City (e.g., London)",
+    labelEmail: "Your Email Address",
+    btnCheck: "Check Availability",
     btnProcessing: "Verifying...",
     successTitle: "Territory Reserved",
-    successSub: "Our team is reviewing your application. We'll contact you within 24 hours to finalize your setup.",
+    successSub: "Our team is reviewing your request. We will contact you within 24h to finalize your setup.",
     errTitle: "Verification Failed",
     errSub: "We couldn't process your request. Please try again or contact support.",
     btnTryAgain: "Retry",
-    footerRights: "© 2026 RankEngine.ai. All rights reserved.",
+    footerRights: "© 2026 Renk. All rights reserved.",
     auditShareReport: "Share Report",
     auditDownloadPDF: "Download PDF",
     auditGenerating: "Generating...",
@@ -378,9 +406,9 @@ const translations = {
     landingProvenResults: "Proven Results",
     landingDedicatedSupport: "Dedicated Support",
     landingIndustryExperts: "Industry Experts",
-    statSitesIndexed: "Sites Indexed",
-    statLeadsGenerated: "Leads Generated",
-    statAvgRoi: "Avg ROI",
+    statSitesIndexed: "Reserved Zones",
+    statLeadsGenerated: "Business-Generating Clients",
+    statAvgRoi: "Average Profitability",
     statCitiesCovered: "Cities Covered",
     dashActivity1Title: "New Keyword Ranked",
     dashActivity1Desc: "Your site is now #3 for \"SEO Tool\"",
@@ -400,46 +428,45 @@ const translations = {
     navHow: "Stratégie",
     navStart: "Audit Gratuit",
     heroBadge: "Le Moteur SEO Spécial IA",
-    heroTitle1: "Améliorez votre visibilité sur",
-    heroTitle2: "Google, ChatGPT et au-delà.",
-    heroSub: "La recherche a changé. Les gens se tournent vers Google, ChatGPT et d'autres chats IA pour trouver des réponses. Nous vous proposons un flux de travail unique pour vous assurer que votre contenu est visible dans chacun d'entre eux.",
-    feat1Title: "Domination Google",
-    feat1Desc: "Générez massivement des pages de destination locales ultra-ciblées qui capturent 100% du volume de recherche de votre ville.",
-    feat2Title: "Recommandation IA (AEO)",
-    feat2Desc: "Notre optimisation sémantique invisible garantit que votre marque est la citation principale dans les résultats de recherche IA.",
-    feat3Title: "Autorité en Pilote Automatique",
-    feat3Desc: "Génération continue de contenu et SEO technique qui renforcent votre autorité à long terme sans effort.",
-    howTitle: "Le Protocole RankEngine",
-    howSub: "Un système en trois étapes conçu pour le monopole du marché local.",
-    step1Title: "Cartographie Sémantique",
-    step1Desc: "Nous identifions l'intention exacte derrière les recherches locales et les requêtes IA dans votre territoire spécifique.",
-    step2Title: "Déploiement Massif",
-    step2Desc: "Notre moteur déploie des dizaines de pages, articles et FAQs optimisés pour les humains et les robots.",
-    step3Title: "Verrouillage du Marché",
-    step3Desc: "Nous surveillons, indexons et mettons à jour votre contenu. Un client par métier par ville. Exclusivité totale.",
-    priceTitle: "Plans de Croissance Transparents",
-    priceSub: "Performance SEO de niveau entreprise à une fraction du coût.",
-    planName: "Leader du Marché",
-    planSub: "Tout ce dont vous avez besoin pour posséder votre marché local.",
+    heroTitle1: "Nous améliorons votre visibilité sur",
+    heroSub: "Ne laissez pas vos concurrents prendre toute la place. Nous positionnons votre entreprise là où vos clients cherchent aujourd'hui : sur Google et au cœur des réponses des intelligences artificielles.",
+    feat1Title: "Exclusivité Totale (50km)",
+    feat1Desc: "Nous travaillons avec un seul professionnel par métier et par zone. Si nous vous accompagnons, nous refusons vos concurrents. Vous obtenez 100% des résultats.",
+    feat2Title: "Référencement IA (LLM SEO)",
+    feat2Desc: "Vos futurs clients cherchent déjà sur ChatGPT, Claude et Gemini. Nous positionnons votre entreprise comme la seule recommandation évidente sur ces nouvelles intelligences artificielles.",
+    feat3Title: "Technologie 100% Automatisée",
+    feat3Desc: "Notre intelligence artificielle gère tout : de l'audit à la création de vos contenus. Résultat ? Une stratégie plus rapide, plus performante et beaucoup moins chère qu'une agence classique.",
+    howTitle: "Notre Méthode d'Acquisition",
+    howSub: "Une stratégie claire en 3 étapes pour dominer votre zone géographique sur Google et les IA.",
+    step1Title: "1. Audit Gratuit & Stratégie",
+    step1Desc: "Nous analysons votre marché local. Nous identifions exactement ce que vos clients recherchent sur Google et sur les intelligences artificielles pour créer un plan d'action sur-mesure.",
+    step2Title: "2. Pack d'Ouverture (499€)",
+    step2Desc: "Création immédiate de 50 contenus ultra-optimisés : 10 pages services, 15 pages villes, 10 articles, 10 FAQ IA et 5 pages de conversion. Vous êtes visible partout, tout de suite.",
+    step3Title: "3. Croissance Mensuelle (199€)",
+    step3Desc: "Chaque mois, nous ajoutons 20 nouveaux contenus ciblés et 10 publications Google Business Profile. Votre visibilité augmente en continu, vos concurrents disparaissent.",
+    priceTitle: "Une Offre Simple et Transparente",
+    priceSub: "Une technologie de pointe enfin accessible aux indépendants et PME locales.",
+    planName: "Domination Locale",
+    planSub: "Exclusivité garantie : 1 seul client par métier dans un rayon de 50 km.",
     planPrice: "499€",
-    planSetup: "configuration",
-    planMo: "+ 199€/mois maintenance",
-    check1: "50+ Pages Locales Ciblées",
-    check2: "Optimisation AEO (ChatGPT/Gemini)",
-    check3: "Contenu d'Autorité Mensuel",
-    check4: "Indexation Google Instantanée",
-    check5: "Tableau de Bord de Performance",
-    check6: "Gestionnaire de Croissance Dédié",
-    planCta: "Réclamer mon Secteur",
-    auditTitle: "Audit IA Approfondi",
-    auditSub: "Analysez la visibilité sémantique de votre site et le potentiel de votre marché local en temps réel.",
-    auditPlaceholder: "Entrez votre URL (ex: https://votreentreprise.fr)",
-    auditBtn: "Analyser la Visibilité",
-    auditAnalyzing: "Analyse des données sémantiques...",
-    auditKeywords: "Cartographie de la concurrence...",
-    auditStrategy: "Construction de la feuille de route...",
-    auditBadge1: "Analyse en Temps Réel",
-    auditBadge2: "Propulsé par l'IA",
+    planSetup: "Pack d'Ouverture (50 contenus)",
+    planMo: "puis 199€/mois (sans engagement)",
+    check1: "Audit initial 100% gratuit",
+    check2: "50 contenus Google & IA (Pack Ouverture)",
+    check3: "20 nouveaux contenus chaque mois",
+    check4: "10 publications Google Business par mois",
+    check5: "Optimisation ChatGPT, Claude, Gemini",
+    check6: "Exclusivité totale sur votre zone (50km)",
+    planCta: "Vérifier la disponibilité de ma zone",
+    auditTitle: "Obtenez votre Audit Gratuit",
+    auditSub: "Découvrez instantanément si votre secteur est encore disponible et analysez votre potentiel de croissance.",
+    auditPlaceholder: "Entrez l'adresse de votre site web (ex: www.mon-entreprise.fr)",
+    auditBtn: "Lancer mon Audit Gratuit",
+    auditAnalyzing: "Analyse de votre marché local...",
+    auditKeywords: "Vérification de la disponibilité de la zone...",
+    auditStrategy: "Création de votre plan d'action sur-mesure...",
+    auditBadge1: "Résultat Immédiat",
+    auditBadge2: "Analyse Google & IA",
     auditResults: "Rapport d'Intelligence de Visibilité",
     scoreVisibility: "Visibilité",
     scoreSentiment: "Sentiment",
@@ -452,7 +479,17 @@ const translations = {
     auditRoiTitle: "Croissance Projetée",
     auditKeywordsTitle: "Mots-clés à Haute Intention",
     auditSeoTitle: "Optimisation SEO & AEO",
-    auditVisualTitle: "Feuille de Route Stratégique",
+    auditVisualTitle: "Plan d'Action",
+    auditActionPlan: "Plan d'Action (90 Jours)",
+    auditPhase1: "Jours 1-30",
+    auditPhase1Title: "Pack d'Ouverture",
+    auditPhase1Desc: "Création et publication de vos 50 premiers contenus ultra-optimisés (Google & IA).",
+    auditPhase2: "Jours 31-60",
+    auditPhase2Title: "Domination Locale",
+    auditPhase2Desc: "Indexation massive et positionnement de votre entreprise sur votre zone de 50 km.",
+    auditPhase3: "Jours 61-90",
+    auditPhase3Title: "Croissance Mensuelle",
+    auditPhase3Desc: "Ajout de 20 nouveaux contenus et 10 publications Google Business pour creuser l'écart.",
     auditLivePreviewBtn: "Aperçu des Pages",
     auditDeployBtn: "Exécuter la Stratégie",
     auditReport: "Rapport d'Audit",
@@ -487,22 +524,22 @@ const translations = {
     statKeywords: "Mots-clés Classés",
     statLeads: "Leads Générés",
     statAuthority: "Autorité du Domaine",
-    testimonialsTitle: "Approuvé par les Leaders Locaux",
-    testimonialsSub: "Rejoignez plus de 500 entreprises dominant leurs marchés locaux avec RankEngine.",
-    formTitle: "Commencez votre voyage SEO IA",
-    formSub: "Rejoignez plus de 500 entreprises dominant leurs marchés locaux avec RankEngine.ai. Commencez dès aujourd'hui.",
-    labelBiz: "Nom de l'Entreprise",
-    labelUrl: "URL du Site Web",
-    labelCity: "Région Cible",
-    labelEmail: "E-mail Professionnel",
-    btnCheck: "Commencer Maintenant",
+    testimonialsTitle: "Ils Dominent Leur Secteur",
+    testimonialsSub: "Des artisans et PME qui ont fait le choix de l'exclusivité et de l'innovation.",
+    formTitle: "Réservez Votre Exclusivité",
+    formSub: "Vérifiez si votre métier est encore disponible dans votre zone de 50 km. Premier arrivé, premier servi.",
+    labelBiz: "Nom de votre entreprise",
+    labelUrl: "Site web actuel (optionnel)",
+    labelCity: "Ville d'intervention (ex: Lyon)",
+    labelEmail: "Votre adresse e-mail",
+    btnCheck: "Vérifier la disponibilité",
     btnProcessing: "Vérification...",
     successTitle: "Secteur Réservé",
     successSub: "Notre équipe examine votre demande. Nous vous contacterons sous 24h pour finaliser votre installation.",
     errTitle: "Échec de la Vérification",
     errSub: "Nous n'avons pas pu traiter votre demande. Veuillez réessayer ou contacter le support.",
     btnTryAgain: "Réessayer",
-    footerRights: "© 2026 RankEngine.ai. Tous droits réservés.",
+    footerRights: "© 2026 Renk. Tous droits réservés.",
     auditShareReport: "Partager le Rapport",
     auditDownloadPDF: "Télécharger le PDF",
     auditGenerating: "Génération...",
@@ -585,9 +622,9 @@ const translations = {
     landingProvenResults: "Résultats Prouvés",
     landingDedicatedSupport: "Support Dédié",
     landingIndustryExperts: "Experts du Secteur",
-    statSitesIndexed: "Sites Indexés",
-    statLeadsGenerated: "Leads Générés",
-    statAvgRoi: "ROI Moyen",
+    statSitesIndexed: "Zones Réservées",
+    statLeadsGenerated: "Clients Apporteurs d'Affaires",
+    statAvgRoi: "Rentabilité Moyenne",
     statCitiesCovered: "Villes Couvertes",
     dashActivity1Title: "Nouveau Mot-clé Classé",
     dashActivity1Desc: "Votre site est maintenant #3 pour \"SEO Tool\"",
@@ -608,45 +645,44 @@ const translations = {
     navStart: "Auditoría Gratis",
     heroBadge: "El Motor SEO para la Era de la IA",
     heroTitle1: "Mejora tu visibilidad en",
-    heroTitle2: "Google, ChatGPT y más allá.",
-    heroSub: "La búsqueda ha cambiado. La gente recurre a Google, ChatGPT y otros chats de IA para encontrar respuestas. Ofrecemos un flujo de trabajo único para asegurar que su contenido sea visible en cada uno de ellos.",
-    feat1Title: "Dominación en Google",
-    feat1Desc: "Genera masivamente páginas de destino locales ultra-específicas que capturan el 100% del volumen de búsqueda de tu ciudad.",
-    feat2Title: "Recomendación IA (AEO)",
-    feat2Desc: "Nuestra optimización semántica invisible asegura que tu marca sea la cita principal en los resultados de IA.",
-    feat3Title: "Autoridad en Piloto Automático",
-    feat3Desc: "Generación continua de contenido y SEO técnico que construye autoridad a largo plazo sin esfuerzo.",
-    howTitle: "El Protocolo RankEngine",
-    howSub: "Un sistema de tres pasos diseñado para el monopolio del mercado local.",
-    step1Title: "Mapeo Semántico",
-    step1Desc: "Identificamos la intención exacta detrás de las búsquedas locales y las consultas de IA en tu territorio.",
-    step2Title: "Despliegue Masivo",
-    step2Desc: "Nuestro motor despliega docenas de páginas, artículos y FAQs optimizados para humanos y bots.",
-    step3Title: "Bloqueo del Mercado",
-    step3Desc: "Monitoreamos, indexamos y actualizamos tu contenido. Un cliente por sector por ciudad. Exclusividad total.",
-    priceTitle: "Planes de Crecimiento Transparentes",
-    priceSub: "Rendimiento SEO de nivel empresarial a una fraction del costo.",
-    planName: "Líder del Mercado",
-    planSub: "Todo lo que necesitas para ser dueño de tu mercado local.",
+    heroSub: "No deje que sus competidores se queden con todo el espacio. Posicionamos su negocio donde sus clientes buscan hoy: en Google y en el centro de las respuestas de la IA.",
+    feat1Title: "Exclusividad Total (50km)",
+    feat1Desc: "Trabajamos con un solo profesional por sector y por zona. Si te acompañamos, rechazamos a tus competidores. Obtienes el 100% de los resultados.",
+    feat2Title: "SEO para IA (LLM SEO)",
+    feat2Desc: "Tus futuros clientes ya están buscando en ChatGPT, Claude y Gemini. Posicionamos tu negocio como la recomendación obvia en estas nuevas inteligencias artificiales.",
+    feat3Title: "Tecnología 100% Automatizada",
+    feat3Desc: "Nuestra inteligencia artificial gestiona todo: desde la auditoría hasta la creación de tus contenidos. ¿El resultado? Una estrategia más rápida, de mayor rendimiento y mucho más asequible que una agencia tradicional.",
+    howTitle: "Nuestro Método de Adquisición",
+    howSub: "Una estrategia clara en 3 pasos para dominar tu área geográfica en Google y las IA.",
+    step1Title: "1. Auditoría Gratis y Estrategia",
+    step1Desc: "Analizamos tu mercado local. Identificamos exactamente qué buscan tus clientes en Google y en las inteligencias artificiales para crear un plan de acción a medida.",
+    step2Title: "2. Pack de Inicio (499€)",
+    step2Desc: "Creación inmediata de 50 contenidos ultra optimizados: 10 páginas de servicios, 15 páginas de ciudades, 10 artículos, 10 FAQ de IA y 5 páginas de conversión. Eres visible en todas partes, de inmediato.",
+    step3Title: "3. Crecimiento Mensual (199€)",
+    step3Desc: "Cada mes, añadimos 20 nuevos contenidos específicos y 10 publicaciones en Google Business Profile. Tu visibilidad aumenta continuamente, tus competidores desaparecen.",
+    priceTitle: "Una Oferta Simple y Transparente",
+    priceSub: "Tecnología punta por fin accesible para autónomos y pymes locales.",
+    planName: "Dominación Local",
+    planSub: "Exclusividad garantizada: 1 cliente por sector en un radio de 50 km.",
     planPrice: "499€",
-    planSetup: "configuración",
-    planMo: "+ 199€/mes mantenimiento",
-    check1: "50+ Páginas Locales Específicas",
-    check2: "Optimización AEO (ChatGPT/Gemini)",
-    check3: "Contenido de Autoridad Mensual",
-    check4: "Indexación Instantánea en Google",
-    check5: "Panel de Rendimiento en Tiempo Real",
-    check6: "Gestor de Crecimiento Dedicado",
-    planCta: "Reclamar mi Territorio",
-    auditTitle: "Auditoría IA Profunda",
-    auditSub: "Analiza la visibilidad semántica de tu sitio y el potencial de tu mercado local en tiempo real.",
-    auditPlaceholder: "Introduce tu URL (ej: https://tunegocio.es)",
-    auditBtn: "Analizar Visibilidad",
-    auditAnalyzing: "Analizando datos semánticos...",
-    auditKeywords: "Mapeando competencia local...",
-    auditStrategy: "Construyendo hoja de ruta...",
-    auditBadge1: "Análisis en Tiempo Real",
-    auditBadge2: "Impulsado por IA",
+    planSetup: "Pack de Inicio (50 contenidos)",
+    planMo: "luego 199€/mes (sin compromiso)",
+    check1: "Auditoría inicial 100% gratuita",
+    check2: "50 contenidos Google e IA (Pack Inicio)",
+    check3: "20 nuevos contenidos cada mes",
+    check4: "10 publicaciones en Google Business al mes",
+    check5: "Optimización ChatGPT, Claude, Gemini",
+    check6: "Exclusividad total en tu zona (50km)",
+    planCta: "Comprobar disponibilidad de mi zona",
+    auditTitle: "Obtén tu Auditoría Gratis",
+    auditSub: "Descubre al instante si tu sector sigue disponible y analiza tu potencial de crecimiento.",
+    auditPlaceholder: "Introduce la dirección de tu sitio web (ej: www.mi-empresa.es)",
+    auditBtn: "Lanzar mi Auditoría Gratis",
+    auditAnalyzing: "Analizando tu mercado local...",
+    auditKeywords: "Comprobando disponibilidad de la zona...",
+    auditStrategy: "Creando tu plan de acción a medida...",
+    auditBadge1: "Resultado Inmediato",
+    auditBadge2: "Análisis Google e IA",
     auditResults: "Informe de Inteligencia de Visibilidad",
     scoreVisibility: "Visibilidad",
     scoreSentiment: "Sentimiento",
@@ -660,6 +696,16 @@ const translations = {
     auditKeywordsTitle: "Palabras Clave de Alta Intención",
     auditSeoTitle: "Optimización SEO & AEO",
     auditVisualTitle: "Hoja de Ruta Estratégica",
+    auditActionPlan: "Plan de Acción (90 Días)",
+    auditPhase1: "Días 1-30",
+    auditPhase1Title: "Pack de Inicio",
+    auditPhase1Desc: "Creación y publicación de tus primeros 50 contenidos ultra optimizados (Google e IA).",
+    auditPhase2: "Días 31-60",
+    auditPhase2Title: "Dominación Local",
+    auditPhase2Desc: "Indexación masiva y posicionamiento de tu empresa en tu zona de 50 km.",
+    auditPhase3: "Días 61-90",
+    auditPhase3Title: "Crecimiento Mensual",
+    auditPhase3Desc: "Adición de 20 nuevos contenidos y 10 publicaciones en Google Business para ampliar la ventaja.",
     auditLivePreviewBtn: "Previsualizar Páginas",
     auditDeployBtn: "Ejecutar Estrategia",
     auditReport: "Informe de Auditoría",
@@ -694,22 +740,22 @@ const translations = {
     statKeywords: "Palabras clave posicionadas",
     statLeads: "Leads generados",
     statAuthority: "Autoridad del dominio",
-    testimonialsTitle: "Confiado por Líderes Locales",
-    testimonialsSub: "Únete a más de 500 empresas que dominan sus mercados locales con RankEngine.",
-    formTitle: "Inicie su viaje de SEO con IA",
-    formSub: "Únase a más de 500 empresas que dominan sus mercados locales con RankEngine.ai. Comience hoy mismo.",
-    labelBiz: "Nombre del Negocio",
-    labelUrl: "URL del Sitio Web",
-    labelCity: "Región Objetivo",
-    labelEmail: "Email Profesional",
-    btnCheck: "Empezar Ahora",
+    testimonialsTitle: "Dominan su Sector",
+    testimonialsSub: "Artesanos y pymes que eligieron la exclusividad y la innovación.",
+    formTitle: "Reserva tu Exclusividad",
+    formSub: "Comprueba si tu sector sigue disponible en tu zona de 50 km. Por orden de llegada.",
+    labelBiz: "Nombre de tu negocio",
+    labelUrl: "Sitio web actual (opcional)",
+    labelCity: "Ciudad de servicio (ej: Madrid)",
+    labelEmail: "Tu correo electrónico",
+    btnCheck: "Comprobar Disponibilidad",
     btnProcessing: "Verificando...",
     successTitle: "Territorio Reservado",
     successSub: "Nuestro equipo está revisando tu solicitud. Te contactaremos en 24 horas para finalizar tu configuración.",
     errTitle: "Error de Verificación",
     errSub: "No pudimos procesar tu solicitud. Inténtalo de nuevo o contacta con soporte.",
     btnTryAgain: "Reintentar",
-    footerRights: "© 2026 RankEngine.ai. Todos los derechos reservados.",
+    footerRights: "© 2026 Renk. Todos los derechos reservados.",
     auditShareReport: "Compartir Informe",
     auditDownloadPDF: "Descargar PDF",
     auditGenerating: "Generando...",
@@ -792,9 +838,9 @@ const translations = {
     landingProvenResults: "Resultados Probados",
     landingDedicatedSupport: "Soporte Dedicado",
     landingIndustryExperts: "Expertos del Sector",
-    statSitesIndexed: "Sitios Indexados",
-    statLeadsGenerated: "Leads Generados",
-    statAvgRoi: "ROI Promedio",
+    statSitesIndexed: "Zonas Reservadas",
+    statLeadsGenerated: "Clientes Generadores de Negocio",
+    statAvgRoi: "Rentabilidad Media",
     statCitiesCovered: "Ciudades Cubiertas",
     dashActivity1Title: "Nueva Palabra Clave Clasificada",
     dashActivity1Desc: "Su sitio ahora es el n.º 3 para \"SEO Tool\"",
@@ -904,21 +950,18 @@ function AppContent() {
 
   const Dashboard = () => {
     const stats = [
-      { label: t.statTraffic, value: auditData ? `${(auditData.localVisibilityScore * 120).toLocaleString()}` : '12.4k', change: '+14%', icon: TrendingUp, color: 'text-emerald-400' },
-      { label: t.statKeywords, value: auditData ? `${auditData.keywords.length * 12}` : '842', change: '+28', icon: Target, color: 'text-cyan-400' },
-      { label: t.statLeads, value: auditData ? `${Math.floor(auditData.localVisibilityScore * 1.5)}` : '156', change: '+5%', icon: Users, color: 'text-purple-400' },
-      { label: t.statAuthority, value: auditData ? `${auditData.aiReadinessScore}` : '42', change: '+2', icon: Shield, color: 'text-yellow-400' },
+      { label: t.statTraffic, value: auditData ? `${((auditData.localVisibilityScore || 0) * 120).toLocaleString()}` : '12.4k', change: '+14%', icon: TrendingUp, color: 'text-success' },
+      { label: t.statKeywords, value: auditData ? `${(auditData.keywords?.length || 0) * 12}` : '842', change: '+28', icon: Target, color: 'text-info' },
+      { label: t.statLeads, value: auditData ? `${Math.floor((auditData.localVisibilityScore || 0) * 1.5)}` : '156', change: '+5%', icon: Users, color: 'text-primary' },
+      { label: t.statAuthority, value: auditData ? `${auditData.aiReadinessScore || 0}` : '42', change: '+2', icon: Shield, color: 'text-warning' },
     ];
 
     return (
-      <div className="min-h-screen bg-[#050505] text-white font-sans flex">
+      <div className="min-h-screen bg-bg-secondary text-text font-sans flex">
         {/* Sidebar */}
-        <aside className="w-64 border-r border-white/5 bg-[#0a0a0a] hidden lg:flex flex-col p-6 sticky top-0 h-screen">
+        <aside className="w-64 border-r border-border bg-surface hidden lg:flex flex-col p-6 sticky top-0 h-screen">
           <div className="flex items-center gap-2 mb-12">
-            <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center">
-              <Zap className="w-5 h-5 text-black" />
-            </div>
-            <span className="text-xl font-bold tracking-tighter">RankEngine<span className="text-emerald-400">.ai</span></span>
+            <RenkLogo className="h-28 w-auto" variant="small" />
           </div>
 
           <nav className="space-y-2 flex-1">
@@ -932,10 +975,10 @@ function AppContent() {
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-md text-sm font-medium transition-all ${
                   activeTab === item.id 
-                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
-                    : 'text-white hover:text-emerald-400 hover:bg-white/5'
+                    ? 'bg-primary/10 text-primary border border-primary/20' 
+                    : 'text-text-secondary hover:text-primary hover:bg-bg-secondary'
                 }`}
               >
                 <item.icon className="w-5 h-5" />
@@ -944,12 +987,12 @@ function AppContent() {
             ))}
           </nav>
 
-          <div className="mt-auto p-4 rounded-2xl bg-emerald-500/5 border border-emerald-500/10">
-            <div className="text-sm text-emerald-400 font-bold mb-1 uppercase tracking-wider">{t.dashPro}</div>
-            <div className="text-sm text-white font-bold mb-3">{t.dashUnlimited}</div>
+          <div className="mt-auto p-4 rounded-md bg-primary/5 border border-primary/10">
+            <div className="text-xs text-primary font-bold mb-1 uppercase tracking-wider">{t.dashPro}</div>
+            <div className="text-sm text-text font-bold mb-3">{t.dashUnlimited}</div>
             <button 
               onClick={() => setView('conversion')}
-              className="w-full py-2 bg-emerald-500 text-black rounded-lg text-sm font-bold hover:bg-emerald-400 transition-colors"
+              className="btn-primary w-full py-2 text-sm"
             >
               {t.dashUpgrade}
             </button>
@@ -957,20 +1000,20 @@ function AppContent() {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 p-4 sm:p-8 overflow-y-auto">
+        <main className="flex-1 p-4 sm:p-8 overflow-y-auto bg-bg-primary">
           <header className="flex justify-between items-center mb-8">
             <div>
-              <h1 className="text-2xl font-bold">{t.dashWelcome}, {formData.businessName || 'User'}</h1>
-              <p className="text-white text-base">{t.dashStatus}</p>
+              <h1 className="text-2xl font-bold text-text">{t.dashWelcome}, {formData.businessName || 'User'}</h1>
+              <p className="text-text-secondary text-base">{t.dashStatus}</p>
             </div>
             <div className="flex items-center gap-4">
-              <button className="p-2 rounded-xl bg-white/5 border border-white/10 text-white hover:text-emerald-400 transition-colors relative">
+              <button className="p-2 rounded-md bg-surface border border-border text-text-secondary hover:text-primary transition-colors relative shadow-soft">
                 <Bell className="w-5 h-5" />
-                <span className="absolute top-2 right-2 w-2 h-2 bg-emerald-500 rounded-full border-2 border-[#050505]" />
+                <span className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full border-2 border-surface" />
               </button>
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-cyan-500 p-[1px]">
-                <div className="w-full h-full rounded-full bg-[#0a0a0a] flex items-center justify-center">
-                  <User className="w-5 h-5 text-emerald-400" />
+              <div className="w-10 h-10 rounded-full bg-gradient-main p-[1px] shadow-soft">
+                <div className="w-full h-full rounded-full bg-surface flex items-center justify-center">
+                  <User className="w-5 h-5 text-primary" />
                 </div>
               </div>
             </div>
@@ -984,28 +1027,28 @@ function AppContent() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.1 }}
-                className="p-6 rounded-3xl bg-[#0a0a0a] border border-white/5 hover:border-white/10 transition-all group"
+                className="p-6 rounded-md bg-surface border border-border hover:border-primary/30 transition-all group shadow-soft"
               >
                 <div className="flex justify-between items-start mb-4">
-                  <div className={`p-3 rounded-2xl bg-white/5 ${stat.color} group-hover:scale-110 transition-transform`}>
+                  <div className={`p-3 rounded-md bg-bg-secondary ${stat.color} group-hover:scale-110 transition-transform shadow-inner`}>
                     <stat.icon className="w-6 h-6" />
                   </div>
-                  <span className="text-sm font-bold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-lg">
+                  <span className="text-sm font-bold text-success bg-success/10 px-2 py-1 rounded-md">
                     {stat.change}
-                  </span >
+                  </span>
                 </div>
-                <div className="text-white text-sm font-bold mb-1">{stat.label}</div>
-                <div className="text-3xl font-bold">{stat.value}</div>
+                <div className="text-text-secondary text-sm font-bold mb-1">{stat.label}</div>
+                <div className="text-3xl font-bold text-text">{stat.value}</div>
               </motion.div>
             ))}
           </div>
 
           {/* Charts & Activity */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 p-8 rounded-[2.5rem] bg-[#0a0a0a] border border-white/5">
+            <div className="lg:col-span-2 p-8 rounded-md bg-surface border border-border shadow-soft">
               <div className="flex justify-between items-center mb-8">
-                <h3 className="text-lg font-bold">{t.dashTraffic}</h3>
-                <select className="bg-white/5 border border-white/10 rounded-lg px-3 py-1 text-sm outline-none">
+                <h3 className="text-lg font-bold text-text">{t.dashTraffic}</h3>
+                <select className="bg-bg-secondary border border-border rounded-md px-3 py-1 text-sm outline-none text-text-secondary font-bold">
                   <option>{t.dashLast7}</option>
                   <option>{t.dashLast30}</option>
                 </select>
@@ -1023,47 +1066,47 @@ function AppContent() {
                   ]}>
                     <defs>
                       <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                        <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
-                    <XAxis dataKey="name" stroke="#52525b" fontSize={12} tickLine={false} axisLine={false} />
-                    <YAxis stroke="#52525b" fontSize={12} tickLine={false} axisLine={false} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
+                    <XAxis dataKey="name" stroke="#64748B" fontSize={12} tickLine={false} axisLine={false} />
+                    <YAxis stroke="#64748B" fontSize={12} tickLine={false} axisLine={false} />
                     <Tooltip 
-                      contentStyle={{ backgroundColor: '#0a0a0a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
-                      itemStyle={{ color: '#10b981' }}
+                      contentStyle={{ backgroundColor: '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)' }}
+                      itemStyle={{ color: '#3B82F6' }}
                     />
-                    <Area type="monotone" dataKey="value" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorValue)" />
+                    <Area type="monotone" dataKey="value" stroke="#3B82F6" strokeWidth={3} fillOpacity={1} fill="url(#colorValue)" />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
             </div>
 
-            <div className="p-8 rounded-[2.5rem] bg-[#0a0a0a] border border-white/5">
-              <h3 className="text-lg font-bold mb-6">{t.dashActivity}</h3>
+            <div className="p-8 rounded-md bg-surface border border-border shadow-soft">
+              <h3 className="text-lg font-bold text-text mb-6">{t.dashActivity}</h3>
               <div className="space-y-6">
                 {[
-                  { title: t.dashActivity1Title, desc: t.dashActivity1Desc, time: t.dashActivity1Time, icon: Target, color: 'text-emerald-400' },
-                  { title: t.dashActivity2Title, desc: t.dashActivity2Desc, time: t.dashActivity2Time, icon: Zap, color: 'text-yellow-400' },
-                  { title: t.dashActivity3Title, desc: t.dashActivity3Desc, time: t.dashActivity3Time, icon: TrendingUp, color: 'text-cyan-400' },
-                  { title: t.dashActivity4Title, desc: t.dashActivity4Desc, time: t.dashActivity4Time, icon: Users, color: 'text-purple-400' },
+                  { title: t.dashActivity1Title, desc: t.dashActivity1Desc, time: t.dashActivity1Time, icon: Target, color: 'text-success' },
+                  { title: t.dashActivity2Title, desc: t.dashActivity2Desc, time: t.dashActivity2Time, icon: Zap, color: 'text-warning' },
+                  { title: t.dashActivity3Title, desc: t.dashActivity3Desc, time: t.dashActivity3Time, icon: TrendingUp, color: 'text-info' },
+                  { title: t.dashActivity4Title, desc: t.dashActivity4Desc, time: t.dashActivity4Time, icon: Users, color: 'text-primary' },
                 ].map((item, i) => (
                   <div key={i} className="flex gap-4">
-                    <div className={`w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center shrink-0 ${item.color}`}>
+                    <div className={`w-10 h-10 rounded-md bg-bg-secondary flex items-center justify-center shrink-0 ${item.color} shadow-inner`}>
                       <item.icon className="w-5 h-5" />
                     </div>
                     <div>
-                      <div className="text-sm font-bold">{item.title}</div>
-                      <div className="text-sm text-white font-medium">{item.desc}</div>
-                      <div className="text-xs text-white mt-1 uppercase font-bold">{item.time}</div>
+                      <div className="text-sm font-bold text-text">{item.title}</div>
+                      <div className="text-sm text-text-secondary font-medium">{item.desc}</div>
+                      <div className="text-[10px] text-text-muted mt-1 uppercase font-bold tracking-widest">{item.time}</div>
                     </div>
                   </div>
                 ))}
               </div>
               <button 
                 onClick={() => setView('landing')}
-                className="w-full mt-8 py-3 bg-white/5 border border-white/10 rounded-2xl text-sm font-bold hover:bg-white/10 transition-all flex items-center justify-center gap-2"
+                className="w-full mt-8 py-3 bg-bg-secondary border border-border rounded-md text-sm font-bold text-text-secondary hover:text-primary hover:bg-bg-primary transition-all flex items-center justify-center gap-2"
               >
                 <ArrowLeft className="w-4 h-4" /> {t.dashBack}
               </button>
@@ -1124,15 +1167,8 @@ function AppContent() {
 
   const runAudit = async (retryCount = 0) => {
     if (!auditUrl) return;
-    setAuditStep('analyzing');
-    setAuditError(null);
+    
     let urlToAnalyze = auditUrl;
-    if (!urlToAnalyze.startsWith('http')) urlToAnalyze = 'https://' + urlToAnalyze;
-    let realData: any = { city: '', competitors: [], snippet: '' };
-    try {
-      const key = import.meta.env.VITE_SERPAPI_KEY || '';
-      if (key) { realData = await getRealSEOData(urlToAnalyze, key); }
-    } catch(e) { console.warn('SerpAPI error', e); }
     if (!urlToAnalyze.startsWith('http://') && !urlToAnalyze.startsWith('https://')) {
       urlToAnalyze = 'https://' + urlToAnalyze;
     }
@@ -1152,7 +1188,7 @@ function AppContent() {
       
       CRITICAL IDENTIFICATION RULES:
       1. YOU ARE ANALYZING AN EXTERNAL CLIENT: The business at ${urlToAnalyze} is your ONLY subject. 
-      2. DO NOT IDENTIFY AS RANKENGINE: You are NOT a web agency, and the client is NOT a web agency (unless the site explicitly says so).
+      2. DO NOT IDENTIFY AS Renk: You are NOT a web agency, and the client is NOT a web agency (unless the site explicitly says so).
       3. REAL-TIME TOOLS: Use googleSearch to find the physical location, real name, and actual industry of ${urlToAnalyze}. Search for "[URL] company info", "[URL] mentions légales", and "[URL] industry category".
       4. SECTOR ACCURACY: If the site is about "rénovation de l'habitat" (housing renovation), "dentiste", "plombier", etc., your entire audit MUST use that specific vocabulary.
       5. NO HALLUCINATION: If the site is in French, the business is likely in France. Find the city and region.
@@ -1167,7 +1203,7 @@ function AppContent() {
       - Opportunities: 3 Medium severity growth levers.
       - Brand Perception: Detailed sentiment analysis (positive/neutral/negative) and top brand attributes from individual user perspectives.
       - Platform Visibility: 5 platforms (Google, ChatGPT, Gemini, Perplexity, Maps) with scores and industry averages.
-      - LLM Ratings: Ground these in market reality. Check how often the brand is cited as a source, recommended in top-10 lists, or mentioned in industry-specific queries.
+      - LLM Ratings: Ground these in market reality. Provide realistic ratings for ChatGPT, Gemini, Perplexity, Claude, and Grok. If the brand is a small local business or unknown, the scores MUST be very low (0-20). Only give high scores if they are a massive, globally recognized brand. CRITICAL: The 'reasoning' and 'status' MUST perfectly match the 'score'. A low score (0-30) MUST have a 'poor' status and a negative reasoning explaining the invisibility. A high score MUST have an 'excellent' status and positive reasoning.
       - Visibility Status: For each competitor and the client, assign a status: "Dominant", "Established", "Emerging", or "Invisible" with a brief reason why.
       
       PHASE-BASED ANALYSIS (JSON OUTPUT):
@@ -1183,34 +1219,34 @@ function AppContent() {
       - industry: string (the specific industry, e.g., "Rénovation de l'habitat")
       - riskLevel: string ("low", "medium", "high", or "critical")
       - seoScore: number (0-100)
-      - hook: string (PHASE 1)
-      - competitorComparison: array of 3 objects { name, visibility, maps: boolean, status: string, context: string }
-      - keywordRankings: array of 5 objects { keyword, position }
-      - estimatedLoss: object { amount, description }
-      - opportunities: array of 3 objects { title, description }
-      - actionPlan: array of 4 objects { title, description }
-      - projection: array of 3 strings
+      - hook: string (max 15 words, PHASE 1)
+      - competitorComparison: array of 3 objects { name, visibility: string (e.g. "Top 3"), maps: boolean, status: string, context: string }
+      - keywordRankings: array of 5 objects { keyword, position: number | string }
+      - estimatedLoss: object { amount: string, description: string }
+      - opportunities: array of 3 objects { title, description: string }
+      - actionPlan: array of 4 objects { title, description: string }
+      - projection: array of 4 strings
       - visionStatement: string
       - cta: string
       - extractedLocation: string
-      - localVisibilityScore: number
-      - aiReadinessScore: number
-      - semanticAuthorityScore: number
-      - scores: object { visibility, sentiment, authority, accuracy }
-      - platformVisibility: array of 5 objects { name, score, avg } (Platforms: Google, ChatGPT, Gemini, Perplexity, Maps)
-      - issues: array of 3 objects { title, desc, severity: "high" | "medium" | "low" }
-      - perceptions: array of 2 objects { label, value }
-      - brandPerceptionDetails: object { sentiment: { positive, neutral, negative }, topAttributes: array of { label, score }, userFeedbackSummary: string }
+      - localVisibilityScore: number (0-100)
+      - aiReadinessScore: number (0-100)
+      - semanticAuthorityScore: number (0-100)
+      - scores: object { visibility: number, sentiment: number, authority: number, accuracy: number }
+      - platformVisibility: array of 6 objects { name, score: number, avg: number } (Platforms: Google, ChatGPT, Gemini, Perplexity, Grok, Maps)
+      - issues: array of 3 objects { title, desc: string, severity: "high" | "medium" | "low" }
+      - perceptions: array of 4 objects { label, value: number (0-100), context: string }
+      - brandPerceptionDetails: object { sentiment: { positive: number, neutral: number, negative: number }, topAttributes: array of { label, score }, userFeedbackSummary: string }
       - recommendations: array of 3 strings
-      - technicalHealth: object { performance, accessibility, bestPractices, seo, coreWebVitals: "Passing" | "Needs Improvement" | "Failing" }
+      - technicalHealth: object { performance: number, accessibility: number, bestPractices: number, seo: number, coreWebVitals: "Passing" | "Needs Improvement" | "Failing" }
       - semanticDensity: number (0-100)
-      - semanticTerms: array of at least 25 objects { term, density, status: "optimal" | "low" | "high" }
-      - aiSearchPresence: array of 3 objects { platform, status, context }
+      - semanticTerms: array of at least 25 objects { term, density: number, status: "optimal" | "low" | "high" }
+      - aiSearchPresence: array of 4 objects { platform, status, context } (Platforms: ChatGPT, Gemini, Perplexity, Grok)
       - errors: array of strings
       - warnings: array of strings
       - notices: array of strings
       - keywords: array of strings
-      - detailedKeywords: array of 4 objects { keyword, intent, volume, kd, opportunityScore }
+      - detailedKeywords: array of 4 objects { keyword, intent, volume: number, kd: number, opportunityScore: number }
       - aiCompetitors: array of 3 objects { name, aiVisibilityScore: number (0-100), strength, visibility: number (0-100), status: string, context: string, strategy: string }
       - pageTitle: string
       - pageContent: string
@@ -1222,27 +1258,6 @@ function AppContent() {
       - roiEstimate: string
       - growthStrategy: string
       - llmRatings: array of 5 objects { model, score: number (0-100), status: "excellent" | "good" | "poor", reasoning }
-      - issues: array of objects { title, description, severity: "critical" | "medium" }
-      - roadmap: array of 3 objects { phase, title, description }
-      - perceptions: array of 4 objects { label, value: number (0-100), context: string }
-      - hook: string (max 15 words)
-      - extractedLocation: string
-      - companyName: string
-      - industry: string
-      - riskLevel: "critical" | "high" | "medium"
-      - seoScore: number (0-100)
-      - competitorComparison: array of 3 objects { name, visibility: string (e.g. "Top 3"), maps: boolean, status: string, context: string }
-      - keywordRankings: array of 3 objects { keyword, position: number | string }
-      - estimatedLoss: object { amount: string, description: string }
-      - opportunities: array of 3 objects { title, description }
-      - actionPlan: array of 4 objects { title, description }
-      - projection: array of 4 strings
-      - visionStatement: string
-      - cta: string
-      - keywords: array of strings
-      - detailedKeywords: array of 4 objects { keyword, intent, volume: number, kd: number, opportunityScore: number, description: string }
-      - semanticTerms: array of at least 25 objects { term, density: number, status: "optimal" | "low" | "high" }
-      - aiSearchPresence: array of 3 objects { platform, status, context }
       
       Language: ${lang === 'fr' ? 'French' : lang === 'es' ? 'Spanish' : 'English'}.
       Format: JSON only.`;
@@ -1253,22 +1268,21 @@ function AppContent() {
       let response;
       try {
         response = await ai.models.generateContent({
-          model: "gemini-2.0-flash",
+          model: "gemini-3-flash-preview",
           contents: [{ parts: [{ text: prompt }] }],
           config: { 
             responseMimeType: "application/json",
-            systemInstruction: `You are a world-class SEO auditor. You MUST use the urlContext tool to actually visit and read ${urlToAnalyze} before writing anything. Then use googleSearch to find real competitors. All data must come from what you actually found, not from imagination. 
+            systemInstruction: `You are a world-class SEO and AI Search auditor. 
             Your goal is to analyze the URL provided and convince the business owner that they are losing a massive amount of money by being invisible on AI search engines (ChatGPT, Gemini, Perplexity) and Google Maps. 
             
             STRICT RULES:
             1. IDENTIFY THE BUSINESS CORRECTLY: Use googleSearch to find the REAL name and REAL industry of the URL. If the URL is eveom.fr, it is a renovation company, NOT a web agency.
             2. TONE: Be professional, data-driven, and slightly aggressive to create urgency.
-            3. DATA COMPLETENESS: You MUST provide realistic data for ALL requested JSON fields. Do not leave arrays empty.
-            4. NO SELF-IDENTIFICATION: Never say you are RankEngine or that the client is RankEngine.
-5. LOCAL FOCUS: Use googleSearch to search the URL and find real city/region. Never default to Paris.
-            6. COMPETITORS: Use googleSearch to find 3 real local competitors in same city and industry.
-            7. ALL JSON fields must be filled with realistic data. Never leave arrays empty.
-            8. Keyword volumes must be realistic for the city population size.`,
+            3. DATA REALISM: You MUST provide highly realistic data. If the business is a small local shop, their AI visibility, LLM ratings, and SEO scores MUST be very low (0-20). Do not invent high scores for unknown brands.
+            4. DATA COMPLETENESS: You MUST provide realistic data for ALL requested JSON fields. Do not leave arrays empty.
+            5. NO SELF-IDENTIFICATION: Never say you are Renk or that the client is Renk.
+            6. LOCAL FOCUS: Find the city/region of the business and use it in your analysis.
+            7. LLM RATINGS CORRELATION: The 'reasoning' and 'status' in llmRatings MUST perfectly match the 'score'. A low score (0-30) MUST have a 'poor' status and a negative reasoning explaining the invisibility. A high score MUST have an 'excellent' status and positive reasoning.`,
             tools: [
               { urlContext: {} },
               { googleSearch: {} }
@@ -1280,11 +1294,11 @@ function AppContent() {
         setAnalysisProgress(45);
         setCurrentTask("Tentative de récupération des données via recherche Google alternative...");
         response = await ai.models.generateContent({
-          model: "gemini-2.0-flash",
+          model: "gemini-3-flash-preview",
           contents: [{ parts: [{ text: prompt }] }],
           config: { 
             responseMimeType: "application/json",
-            systemInstruction: "You are a world-class SEO and AI Search auditor. Identify the business correctly using search. NEVER hallucinate that the client is a web agency or RankEngine. Provide full data for all fields.",
+            systemInstruction: "You are a world-class SEO and AI Search auditor. Identify the business correctly using search. NEVER hallucinate that the client is a web agency or Renk. Provide full data for all fields. DATA REALISM: You MUST provide highly realistic data. If the business is a small local shop, their AI visibility, LLM ratings, and SEO scores MUST be very low (0-20). CRITICAL: The 'reasoning' and 'status' in llmRatings MUST perfectly match the 'score'. A low score (0-30) MUST have a 'poor' status and a negative reasoning.",
             tools: [{ googleSearch: {} }]
           }
         });
@@ -1294,8 +1308,16 @@ function AppContent() {
       setCurrentTask("Extraction des métriques de santé technique et SEO...");
       
       const text = response.text || "{}";
-      const cleanText = text.replace(/^```json\n?/, '').replace(/\n?```$/, '').trim();
-      const data = JSON.parse(cleanText);
+      const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/) || text.match(/```\n([\s\S]*?)\n```/);
+      const cleanText = jsonMatch ? jsonMatch[1] : text.replace(/^```json\n?/, '').replace(/\n?```$/, '').trim();
+      
+      let data;
+      try {
+        data = JSON.parse(cleanText);
+      } catch (parseError) {
+        console.error("JSON parsing failed:", parseError, "Raw text:", text);
+        throw new Error("Failed to parse AI response as JSON.");
+      }
       
       setCurrentTask("Génération du plan d'action stratégique...");
       // Generate Growth Projection Data
@@ -1377,13 +1399,13 @@ function AppContent() {
         marketAnalysis: "Le marché local dans un rayon de 50km est extrêmement compétitif, mais vos concurrents ignorent encore l'optimisation pour l'IA. C'est une opportunité historique de prendre le monopole total sur votre secteur géographique avant qu'ils ne réagissent.",
         aiRecommendation: "Implémentez immédiatement des données structurées avancées et une stratégie AEO (AI Engine Optimization) pour devenir la recommandation n°1 incontestée de ChatGPT, Gemini et Perplexity dans votre ville.",
         roiEstimate: "+300% de Chiffre d'Affaires Potentiel",
-        growthStrategy: "En dominant les recherches ultra-locales (< 50km), vous pouvez capturer 100% de l'intention d'achat immédiate. Notre protocole RankEngine est conçu pour transformer cette avance technologique en un flux constant de clients qualifiés.",
+        growthStrategy: "En dominant les recherches ultra-locales (< 50km), vous pouvez capturer 100% de l'intention d'achat immédiate. Notre protocole Renk est conçu pour transformer cette avance technologique en un flux constant de clients qualifiés.",
         llmRatings: [
-          { model: "ChatGPT (OpenAI)", score: 45, status: 'good', reasoning: "Bonne compréhension du métier mais manque de citations directes." },
-          { model: "Claude (Anthropic)", score: 38, status: 'poor', reasoning: "Données obsolètes sur la localisation exacte." },
-          { model: "Gemini (Google)", score: 52, status: 'good', reasoning: "Forte présence sur Maps mais faible sur les requêtes conversationnelles." },
-          { model: "Perplexity", score: 30, status: 'poor', reasoning: "Absence totale de sources sémantiques liées au domaine." },
-          { model: "Grok (xAI)", score: 25, status: 'poor', reasoning: "Indexation insuffisante des pages de services." }
+          { model: "ChatGPT (OpenAI)", score: 12, status: 'poor', reasoning: "Aucune mention de la marque dans les recommandations locales." },
+          { model: "Claude (Anthropic)", score: 8, status: 'poor', reasoning: "Données inexistantes sur la localisation exacte et les services." },
+          { model: "Gemini (Google)", score: 15, status: 'poor', reasoning: "Légère présence via Google Maps mais invisible sur les requêtes conversationnelles." },
+          { model: "Perplexity", score: 5, status: 'poor', reasoning: "Absence totale de sources sémantiques liées au domaine d'expertise." },
+          { model: "Copilot (Microsoft)", score: 10, status: 'poor', reasoning: "Indexation insuffisante des pages de services dans l'écosystème Bing." }
         ],
         extractedLocation: "Votre zone locale",
         localVisibilityScore: 42,
@@ -1425,9 +1447,9 @@ function AppContent() {
           { term: "extension bois", density: 0.4, status: 'low' }
         ],
         aiSearchPresence: [
-          { platform: "ChatGPT", status: "Cité", context: "Recommandé pour les services de plomberie locale à Paris." },
-          { platform: "Gemini", status: "Haute Visibilité", context: "Top 3 des résultats pour 'plombier urgence paris'." },
-          { platform: "Claude", status: "Non trouvé", context: "Aucune connexion sémantique détectée." }
+          { platform: "ChatGPT", status: "Invisible", context: "Aucune recommandation détectée pour vos services." },
+          { platform: "Gemini", status: "Invisible", context: "Absence totale des résultats de recherche locale." },
+          { platform: "Perplexity", status: "Non trouvé", context: "Aucune connexion sémantique détectée avec votre marque." }
         ],
         errors: ["Absence de balisage Schema.org LocalBusiness", "Aucune page dédiée aux villes environnantes (< 50km)"],
         warnings: ["Vitesse de chargement mobile lente", "Contenu trop générique, manque d'entités sémantiques"],
@@ -1509,11 +1531,11 @@ function AppContent() {
         roiEstimate: "+150% Leads",
         growthStrategy: "Una estrategia SEO local agresiva puede generar un crecimiento del 150% en leads calificados en 6 meses captando propietarios urgentes.",
         llmRatings: [
-          { model: "ChatGPT (OpenAI)", score: 45, status: 'good', reasoning: "Buena comprensión pero faltan citas directas." },
-          { model: "Claude (Anthropic)", score: 38, status: 'poor', reasoning: "Datos de localización desactualizados." },
-          { model: "Gemini (Google)", score: 52, status: 'good', reasoning: "Fuerte presencia en Maps." },
-          { model: "Perplexity", score: 30, status: 'poor', reasoning: "Falta de fuentes semánticas." },
-          { model: "Grok (xAI)", score: 25, status: 'poor', reasoning: "Indexación insuficiente." }
+          { model: "ChatGPT (OpenAI)", score: 12, status: 'poor', reasoning: "Ninguna mención de la marca en recomendaciones locales." },
+          { model: "Claude (Anthropic)", score: 8, status: 'poor', reasoning: "Datos inexistentes sobre la ubicación exacta y servicios." },
+          { model: "Gemini (Google)", score: 15, status: 'poor', reasoning: "Ligera presencia en Google Maps pero invisible en búsquedas conversacionales." },
+          { model: "Perplexity", score: 5, status: 'poor', reasoning: "Ausencia total de fuentes semánticas relacionadas con el dominio." },
+          { model: "Copilot (Microsoft)", score: 10, status: 'poor', reasoning: "Indexación insuficiente de páginas de servicios en Bing." }
         ],
         extractedLocation: "Tu área local",
         localVisibilityScore: 42,
@@ -1542,9 +1564,9 @@ function AppContent() {
           { term: "ventanas climalit", density: 0.7, status: 'low' }
         ],
         aiSearchPresence: [
-          { platform: "ChatGPT", status: "Mencionado", context: "Recomendado para servicios de fontanería en Madrid." },
-          { platform: "Gemini", status: "Alta Visibilidad", context: "Top 3 resultado para 'fontanero urgente madrid'." },
-          { platform: "Claude", status: "No encontrado", context: "No se detectó conexión semántica." }
+          { platform: "ChatGPT", status: "Invisible", context: "Ninguna recomendación detectada para sus servicios." },
+          { platform: "Gemini", status: "Invisible", context: "Ausencia total en resultados de búsqueda local." },
+          { platform: "Perplexity", status: "No encontrado", context: "No se detectó conexión semántica con su marca." }
         ],
         errors: ["Falta de marcado Schema.org LocalBusiness", "No hay páginas dedicadas a ciudades circundantes (< 50km)"],
         warnings: ["Velocidad de carga móvil lenta", "Contenido demasiado genérico, falta de entidades semánticas"],
@@ -1552,8 +1574,10 @@ function AppContent() {
         scores: { visibility: 42, sentiment: 65, authority: 38, accuracy: 85 },
         platformVisibility: [
           { name: "Google", score: 45, avg: 60 },
-          { name: "ChatGPT", score: 15, avg: 50 },
-          { name: "Perplexity", score: 20, avg: 45 }
+          { name: "ChatGPT", score: 12, avg: 50 },
+          { name: "Gemini", score: 15, avg: 48 },
+          { name: "Perplexity", score: 5, avg: 45 },
+          { name: "Maps", score: 35, avg: 70 }
         ],
         issues: [
           { title: "Falta Schema", desc: "Falta el marcado LocalBusiness", severity: "high" },
@@ -1626,10 +1650,11 @@ function AppContent() {
         roiEstimate: "+150% Leads",
         growthStrategy: "An aggressive local SEO strategy can generate 150% growth in qualified leads within 6 months by capturing urgent homeowners.",
         llmRatings: [
-          { model: "ChatGPT (OpenAI)", score: 65, status: "good", reasoning: "Good general visibility but lacks local citations." },
-          { model: "Claude (Anthropic)", score: 42, status: "poor", reasoning: "Limited knowledge of specific local services." },
-          { model: "Gemini (Google)", score: 78, status: "good", reasoning: "Excellent integration with Google Maps data." },
-          { model: "Perplexity", score: 35, status: "poor", reasoning: "Low citation frequency in local search results." }
+          { model: "ChatGPT (OpenAI)", score: 12, status: "poor", reasoning: "No mention of the brand in local recommendations." },
+          { model: "Claude (Anthropic)", score: 8, status: "poor", reasoning: "Non-existent data on exact location and services." },
+          { model: "Gemini (Google)", score: 15, status: "poor", reasoning: "Slight presence via Google Maps but invisible on conversational queries." },
+          { model: "Perplexity", score: 5, status: "poor", reasoning: "Total absence of semantic sources related to the domain." },
+          { model: "Copilot (Microsoft)", score: 10, status: "poor", reasoning: "Insufficient indexing of service pages in the Bing ecosystem." }
         ],
         extractedLocation: "Your local area",
         localVisibilityScore: 42,
@@ -1658,9 +1683,9 @@ function AppContent() {
           { term: "electrical work", density: 0.7, status: 'low' }
         ],
         aiSearchPresence: [
-          { platform: "ChatGPT", status: "Mentioned", context: "Recommended for local plumbing services in London." },
-          { platform: "Gemini", status: "High Visibility", context: "Top 3 result for 'emergency plumber london'." },
-          { platform: "Claude", status: "Not Found", context: "No semantic connection detected." }
+          { platform: "ChatGPT", status: "Invisible", context: "No recommendation detected for your services." },
+          { platform: "Gemini", status: "Invisible", context: "Total absence from local search results." },
+          { platform: "Perplexity", status: "Not Found", context: "No semantic connection detected with your brand." }
         ],
         errors: ["Missing Schema.org LocalBusiness markup", "No dedicated pages for surrounding cities (< 50km)"],
         warnings: ["Slow mobile loading speed", "Content too generic, lacks semantic entities"],
@@ -1668,8 +1693,10 @@ function AppContent() {
         scores: { visibility: 42, sentiment: 65, authority: 38, accuracy: 85 },
         platformVisibility: [
           { name: "Google", score: 45, avg: 60 },
-          { name: "ChatGPT", score: 15, avg: 50 },
-          { name: "Perplexity", score: 20, avg: 45 }
+          { name: "ChatGPT", score: 12, avg: 50 },
+          { name: "Gemini", score: 15, avg: 48 },
+          { name: "Perplexity", score: 5, avg: 45 },
+          { name: "Maps", score: 35, avg: 70 }
         ],
         issues: [
           { title: "Schema Missing", desc: "LocalBusiness schema is missing", severity: "high" },
@@ -1742,12 +1769,12 @@ function AppContent() {
 
   const Conversion = () => {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] text-white font-sans flex items-center justify-center p-4 sm:p-8">
-        <div className="max-w-2xl w-full bg-white/5 border border-white/10 rounded-[2.5rem] p-8 sm:p-12 relative overflow-hidden backdrop-blur-xl shadow-2xl">
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent pointer-events-none" />
+      <div className="min-h-screen bg-bg-secondary text-text font-sans flex items-center justify-center p-4 sm:p-8">
+        <div className="max-w-2xl w-full bg-surface border border-border rounded-md p-8 sm:p-12 relative overflow-hidden shadow-soft">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
           <button 
             onClick={() => setView('landing')}
-            className="absolute top-6 right-6 text-white hover:text-emerald-400 hover:bg-white/10 p-2 rounded-full transition-all z-10 opacity-80"
+            className="absolute top-6 right-6 text-text-secondary hover:text-primary hover:bg-bg-primary p-2 rounded-full transition-all z-10"
           >
             <X className="w-5 h-5" />
           </button>
@@ -1755,28 +1782,28 @@ function AppContent() {
           <div className="relative z-10">
             {formState === 'success' ? (
               <div className="text-center py-10">
-                <div className="w-20 h-20 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-8 border border-emerald-500/30 shadow-[0_0_30px_rgba(16,185,129,0.2)]">
-                  <CheckCircle2 className="w-10 h-10 text-emerald-400" />
+                <div className="w-20 h-20 bg-success/20 rounded-full flex items-center justify-center mx-auto mb-8 border border-success/30 shadow-soft">
+                  <CheckCircle2 className="w-10 h-10 text-success" />
                 </div>
-                <h3 className="text-3xl font-bold mb-4 text-white tracking-tight">{t.successTitle}</h3>
-                <p className="text-white text-xl leading-relaxed mb-8">{t.successSub}</p>
+                <h3 className="text-3xl font-bold mb-4 text-text tracking-tight">{t.successTitle}</h3>
+                <p className="text-text-secondary text-xl leading-relaxed mb-8">{t.successSub}</p>
                 <button 
                   onClick={() => setView('landing')}
-                  className="bg-white text-black px-8 py-4 rounded-xl font-bold text-lg hover:bg-zinc-200 transition-colors"
+                  className="btn-primary px-8 py-4"
                 >
                   Back to Home
                 </button>
               </div>
             ) : formState === 'error' ? (
               <div className="text-center py-10">
-                <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-8 border border-red-500/30 shadow-[0_0_30px_rgba(239,68,68,0.2)]">
-                  <X className="w-10 h-10 text-red-400" />
+                <div className="w-20 h-20 bg-error/20 rounded-full flex items-center justify-center mx-auto mb-8 border border-error/30 shadow-soft">
+                  <X className="w-10 h-10 text-error" />
                 </div>
-                <h3 className="text-3xl font-bold mb-4 text-white tracking-tight">{t.errTitle}</h3>
-                <p className="text-white mb-8 text-xl leading-relaxed">{t.errSub}</p>
+                <h3 className="text-3xl font-bold mb-4 text-text tracking-tight">{t.errTitle}</h3>
+                <p className="text-text-secondary mb-8 text-xl leading-relaxed">{t.errSub}</p>
                 <button 
                   onClick={() => setFormState('idle')}
-                  className="bg-white text-black px-8 py-4 rounded-xl font-bold text-lg hover:bg-zinc-200 transition-colors shadow-lg"
+                  className="btn-primary px-8 py-4"
                 >
                   {t.btnTryAgain}
                 </button>
@@ -1784,59 +1811,59 @@ function AppContent() {
             ) : (
               <>
                 <div className="mb-10 text-center">
-                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 mb-6 shadow-[0_0_20px_rgba(16,185,129,0.1)]">
-                    <Zap className="w-8 h-8 text-emerald-400" />
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-md bg-primary/10 border border-primary/20 mb-6 shadow-soft">
+                    <Zap className="w-8 h-8 text-primary" />
                   </div>
-                  <h3 className="text-3xl font-bold mb-3 text-white tracking-tight">{t.formTitle}</h3>
-                  <p className="text-white text-lg leading-relaxed">{t.formSub}</p>
+                  <h3 className="text-3xl font-bold mb-3 text-text tracking-tight">{t.formTitle}</h3>
+                  <p className="text-text-secondary text-lg leading-relaxed">{t.formSub}</p>
                 </div>
                 
                 <form onSubmit={handleSubmit} className="space-y-5">
                   <div>
-                    <label className="block text-base font-black text-white mb-2 opacity-80">{t.labelBiz}</label>
+                    <label className="block text-base font-black text-text-secondary mb-2 uppercase tracking-widest text-[10px]">{t.labelBiz}</label>
                     <input 
                       required 
                       type="text" 
                       name="businessName"
                       value={formData.businessName}
                       onChange={handleInputChange}
-                      className="w-full bg-black/50 border border-white/10 rounded-xl px-5 py-4 text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all placeholder:text-white/50 shadow-inner" 
+                      className="input w-full" 
                       placeholder="e.g. Apex Plumbing" 
                     />
                   </div>
                   <div>
-                    <label className="block text-base font-black text-white mb-2 opacity-80">{t.labelUrl}</label>
+                    <label className="block text-base font-black text-text-secondary mb-2 uppercase tracking-widest text-[10px]">{t.labelUrl}</label>
                     <input 
                       required 
                       type="url" 
                       name="websiteUrl"
                       value={formData.websiteUrl}
                       onChange={handleInputChange}
-                      className="w-full bg-black/50 border border-white/10 rounded-xl px-5 py-4 text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all placeholder:text-white/50 shadow-inner" 
+                      className="input w-full" 
                       placeholder="https://..." 
                     />
                   </div>
                   <div>
-                    <label className="block text-base font-black text-white mb-2 opacity-80">{t.labelCity}</label>
+                    <label className="block text-base font-black text-text-secondary mb-2 uppercase tracking-widest text-[10px]">{t.labelCity}</label>
                     <input 
                       required 
                       type="text" 
                       name="targetCity"
                       value={formData.targetCity}
                       onChange={handleInputChange}
-                      className="w-full bg-black/50 border border-white/10 rounded-xl px-5 py-4 text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all placeholder:text-white/50 shadow-inner" 
+                      className="input w-full" 
                       placeholder="e.g. Austin, TX" 
                     />
                   </div>
                   <div>
-                    <label className="block text-base font-black text-white mb-2 opacity-80">{t.labelEmail}</label>
+                    <label className="block text-base font-black text-text-secondary mb-2 uppercase tracking-widest text-[10px]">{t.labelEmail}</label>
                     <input 
                       required 
                       type="email" 
                       name="email"
                       value={formData.email}
                       onChange={handleInputChange}
-                      className="w-full bg-black/50 border border-white/10 rounded-xl px-5 py-4 text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all placeholder:text-white/50 shadow-inner" 
+                      className="input w-full" 
                       placeholder="you@company.com" 
                     />
                   </div>
@@ -1844,7 +1871,7 @@ function AppContent() {
                   <button 
                     type="submit" 
                     disabled={formState === 'checkout'}
-                    className="w-full bg-emerald-500 text-black py-5 rounded-xl font-bold text-lg hover:bg-emerald-400 transition-all mt-8 flex items-center justify-center gap-3 disabled:opacity-70 shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] hover:scale-[1.02] active:scale-[0.98]"
+                    className="btn-primary w-full py-5 mt-8 flex items-center justify-center gap-3 disabled:opacity-70"
                   >
                     {formState === 'checkout' ? (
                       <><Loader2 className="w-6 h-6 animate-spin" /> {t.btnProcessing}</>
@@ -1870,16 +1897,16 @@ function AppContent() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white font-sans selection:bg-emerald-500/30 relative overflow-x-hidden">
+    <div className="min-h-screen bg-bg text-text font-sans selection:bg-primary/30 relative overflow-x-hidden">
       {/* Scroll Progress Bar */}
       <motion.div 
-        className="fixed top-0 left-0 right-0 h-1 bg-emerald-500 origin-left z-[100]"
+        className="fixed top-0 left-0 right-0 h-1 bg-primary origin-left z-[100]"
         style={{ scaleX: scrollYProgress }}
       />
 
       {/* Chat Bubble */}
       <div className="fixed bottom-6 right-6 z-50">
-        <button className="w-14 h-14 rounded-full bg-emerald-500 text-black flex items-center justify-center shadow-lg hover:scale-110 transition-transform">
+        <button className="w-14 h-14 rounded-full bg-primary text-white flex items-center justify-center shadow-lg hover:scale-110 transition-transform">
           <MessageSquare className="w-6 h-6" />
         </button>
       </div>
@@ -1889,45 +1916,44 @@ function AppContent() {
         <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
           <motion.div 
             style={{ y: y1 }}
-            className="absolute top-[10%] left-[5%] w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl"
+            className="absolute top-[10%] left-[5%] w-64 h-64 bg-primary/5 rounded-full blur-3xl"
           />
           <motion.div 
             style={{ y: y2 }}
-            className="absolute top-[40%] right-[10%] w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl"
+            className="absolute top-[40%] right-[10%] w-96 h-96 bg-success/5 rounded-full blur-3xl"
           />
-          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay" />
+          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-5 mix-blend-overlay" />
         </div>
       )}
 
       {/* Navbar */}
       {auditStep === 'idle' && (
-        <nav className="fixed top-0 w-full border-b border-white/10 bg-[#0a0a0a]/80 backdrop-blur-md z-50">
-          <div className="px-4 sm:px-6 py-4 flex justify-between items-center max-w-7xl mx-auto w-full">
-            <div className="text-lg sm:text-xl font-bold tracking-tighter flex items-center gap-2">
-              <Zap className="w-5 h-5 text-emerald-400" />
-              RankEngine<span className="text-emerald-400">.ai</span>
+        <nav className="fixed top-0 w-full border-b border-border bg-bg/80 backdrop-blur-md z-50 h-12 sm:h-14">
+          <div className="pl-2 sm:pl-4 pr-4 sm:px-6 h-full flex justify-between items-center max-w-7xl mx-auto w-full relative">
+            <div className="flex items-center -ml-2 sm:-ml-4">
+              <RenkLogo className="h-24 sm:h-32 w-auto translate-y-2" variant="small" />
             </div>
             <div className="flex items-center gap-2 sm:gap-4">
               <div className="flex items-center gap-1 sm:gap-2 mr-1 sm:mr-2">
-                <Globe className="w-4 h-4 text-white opacity-80" />
+                <Globe className="w-4 h-4 text-text opacity-80" />
                 <select 
                   value={lang} 
                   onChange={(e) => setLang(e.target.value as Lang)}
-                  className="bg-transparent text-xs sm:text-sm font-bold text-white hover:text-emerald-400 outline-none cursor-pointer appearance-none opacity-90"
+                  className="bg-transparent text-xs sm:text-sm font-bold text-text hover:text-primary outline-none cursor-pointer appearance-none opacity-90"
                 >
-                  <option value="en" className="bg-[#111] text-white">EN</option>
-                  <option value="fr" className="bg-[#111] text-white">FR</option>
-                  <option value="es" className="bg-[#111] text-white">ES</option>
+                  <option value="en" className="bg-white text-text">EN</option>
+                  <option value="fr" className="bg-white text-text">FR</option>
+                  <option value="es" className="bg-white text-text">ES</option>
                 </select>
               </div>
-              <a href="#pricing" className="text-sm font-bold text-white hover:text-emerald-400 hidden md:block transition-colors opacity-80">{t.navPricing}</a>
-              <a href="#how-it-works" className="text-sm font-bold text-white hover:text-emerald-400 hidden md:block transition-colors opacity-80">{t.navHow}</a>
+              <a href="#pricing" className="text-sm font-bold text-text hover:text-primary hidden md:block transition-colors opacity-80">{t.navPricing}</a>
+              <a href="#how-it-works" className="text-sm font-bold text-text hover:text-primary hidden md:block transition-colors opacity-80">{t.navHow}</a>
               <button 
                 onClick={() => {
                   const element = document.getElementById('audit-tool');
                   element?.scrollIntoView({ behavior: 'smooth' });
                 }}
-                className="bg-white text-black px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium hover:bg-zinc-200 transition-colors"
+                className="btn-primary text-xs sm:text-sm px-4 py-2"
               >
                 {t.navStart}
               </button>
@@ -1937,7 +1963,7 @@ function AppContent() {
       )}
 
       {/* Hero */}
-      <main className={`max-w-7xl mx-auto px-4 sm:px-6 ${auditStep === 'idle' ? 'pt-24 sm:pt-32' : 'pt-8'} pb-12 sm:pb-16`}>
+      <main className={`max-w-7xl mx-auto px-4 sm:px-6 ${auditStep === 'idle' ? 'pt-16 sm:pt-20' : 'pt-8'} pb-12 sm:pb-16`}>
         {auditStep === 'idle' && (
           <div className="max-w-4xl mx-auto text-center">
             <motion.div 
@@ -1949,26 +1975,98 @@ function AppContent() {
                 className="flex flex-col items-center w-full"
               >
                 <motion.div
-                  initial={{ opacity: 0, scale: 0.8 }}
+                  initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.5 }}
-                  className="mb-8 flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-4 py-2 rounded-full"
+                  transition={{ duration: 0.8, ease: "easeOut" }}
+                  className="mb-2 flex items-center justify-center relative group overflow-visible"
                 >
-                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="text-sm font-bold text-emerald-400 uppercase tracking-widest"></span>
+                  <RenkLogo className="h-64 sm:h-96 w-auto relative z-10 drop-shadow-[0_10px_30px_rgba(0,0,0,0.08)]" />
+                  
+                  {/* Refined Magnifying Glass with Ultra-Subtle Synchronized Zoom */}
+                  <motion.div 
+                    initial={{ x: -400, y: 0, opacity: 0, rotate: -10 }}
+                    animate={{ 
+                      x: [-400, 0, -50, 600], 
+                      y: [20, -20, 0, 40],
+                      opacity: [0, 1, 1, 0],
+                      rotate: [-15, 10, -5, 20]
+                    }}
+                    transition={{ 
+                      duration: 7, 
+                      repeat: Infinity, 
+                      repeatDelay: 2,
+                      ease: "easeInOut",
+                      times: [0, 0.35, 0.55, 1]
+                    }}
+                    className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none"
+                  >
+                    <div className="relative w-[110px] h-[110px] sm:w-36 sm:h-36">
+                      {/* The Lens (Powerful Synchronized Zoom Effect) */}
+                      <div className="absolute top-[42.85%] left-[42.85%] -translate-x-1/2 -translate-y-1/2 w-[64.28%] h-[64.28%] rounded-full overflow-hidden border border-white/10 bg-transparent">
+                        <motion.div
+                          animate={{ 
+                            x: [1000, 0, 125, -1500], // Inverse: -2.5 * parent_x
+                            y: [-50, 50, 0, -100],    // Inverse: -2.5 * parent_y
+                            opacity: [0, 0, 1, 1, 0, 0],
+                          }}
+                          transition={{ 
+                            duration: 7, 
+                            repeat: Infinity, 
+                            repeatDelay: 2,
+                            ease: "easeInOut",
+                            x: { times: [0, 0.35, 0.55, 1] },
+                            y: { times: [0, 0.35, 0.55, 1] },
+                            opacity: {
+                              times: [0, 0.28, 0.35, 0.55, 0.62, 1],
+                              duration: 7
+                            }
+                          }}
+                          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none flex items-center justify-center"
+                        >
+                          {/* 2.5x Zoom: Perfectly aligned and visible */}
+                          <div className="scale-[2.5] flex items-center justify-center">
+                            <RenkLogo className="h-64 sm:h-96 w-auto opacity-100" />
+                          </div>
+                        </motion.div>
+                      </div>
+
+                      {/* The Frame & Handle */}
+                      <svg width="100%" height="100%" viewBox="0 0 140 140" fill="none" xmlns="http://www.w3.org/2000/svg" className="drop-shadow-2xl">
+                        <defs>
+                          <linearGradient id="renk-io-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stopColor="#4285F4" />
+                            <stop offset="25%" stopColor="#9B72CB" />
+                            <stop offset="50%" stopColor="#D96570" />
+                            <stop offset="75%" stopColor="#FBBC05" />
+                            <stop offset="100%" stopColor="#34A853" />
+                          </linearGradient>
+                        </defs>
+                        {/* Handle */}
+                        <path d="M100 100 L130 130" stroke="url(#renk-io-grad)" strokeWidth="12" strokeLinecap="round" />
+                        <path d="M105 105 L125 125" stroke="white" strokeOpacity="0.2" strokeWidth="4" strokeLinecap="round" />
+                        
+                        {/* Outer Frame */}
+                        <circle cx="60" cy="60" r="45" stroke="url(#renk-io-grad)" strokeWidth="8" />
+                        
+                        {/* Lens Shine */}
+                        <path d="M35 35 Q 45 25 60 25" stroke="white" strokeOpacity="0.4" strokeWidth="3" strokeLinecap="round" />
+                      </svg>
+                    </div>
+                  </motion.div>
                 </motion.div>
 
                 <motion.h1 
                   initial={{ opacity: 0, y: 30 }} 
                   animate={{ opacity: 1, y: 0 }} 
                   transition={{ duration: 0.7, ease: "easeOut" }}
-                  className="text-4xl sm:text-5xl md:text-6xl lg:text-6xl font-bold tracking-tighter leading-[1.1] mb-10 sm:mb-14 text-center"
+                  className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tighter leading-[1.1] mb-1 text-center"
                 >
-                  {t.heroTitle1} <br className="hidden sm:block" />
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">
-                    {t.heroTitle2}
-                  </span>
+                  {t.heroTitle1}
                 </motion.h1>
+
+                <div className="mb-16 sm:mb-24">
+                  <TypingSearch />
+                </div>
 
                 {/* Animated AI Platforms (Logos + Text) */}
                 <motion.div 
@@ -1981,9 +2079,9 @@ function AppContent() {
                     {[...aiLogos, ...aiLogos, ...aiLogos].map((platform, i) => (
                       <div
                         key={i}
-                        className="flex items-center gap-2 text-xl md:text-2xl font-black tracking-tighter text-white cursor-default"
+                        className="flex items-center gap-2 text-xl md:text-2xl font-black tracking-tighter text-text cursor-default"
                       >
-                        <div>
+                        <div className="text-primary">
                           {platform.svg}
                         </div>
                         {platform.name}
@@ -1996,7 +2094,7 @@ function AppContent() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.7, delay: 0.4, ease: "easeOut" }}
-                  className="text-lg sm:text-xl md:text-2xl text-white mb-10 sm:mb-14 max-w-2xl mx-auto leading-relaxed text-center"
+                  className="text-lg sm:text-xl md:text-2xl text-text-secondary mb-10 sm:mb-14 max-w-2xl mx-auto leading-relaxed text-center"
                 >
                   {t.heroSub}
                 </motion.p>
@@ -2012,11 +2110,19 @@ function AppContent() {
                       const element = document.getElementById('audit-tool');
                       element?.scrollIntoView({ behavior: 'smooth' });
                     }}
-                    className="bg-emerald-500 text-black px-8 py-4 rounded-full font-bold text-lg hover:bg-emerald-400 transition-all shadow-[0_0_30px_-10px_rgba(16,185,129,0.5)] hover:shadow-[0_0_40px_-5px_rgba(16,185,129,0.6)] hover:-translate-y-1"
+                    className="btn-primary px-8 py-4 text-lg"
                   >
                     {t.navStart}
                   </button>
-
+                  <button 
+                    onClick={() => {
+                      const element = document.getElementById('how-it-works');
+                      element?.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className="bg-white/5 text-white border border-white/10 px-8 py-4 rounded-full font-bold text-lg hover:bg-white/10 transition-all hover:-translate-y-1"
+                  >
+                    {t.navHow}
+                  </button>
                 </motion.div>
               </motion.div>
             </motion.div>
@@ -2028,10 +2134,10 @@ function AppContent() {
               <div className="max-w-4xl mx-auto">
                 <div className="text-center mb-8">
                   <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-4">{t.auditTitle}</h2>
-                  <p className="text-white text-base sm:text-lg font-medium opacity-90">{t.auditSub}</p>
+                  <p className="text-text-secondary text-base sm:text-lg font-medium">{t.auditSub}</p>
                 </div>
 
-                <div className="bg-white/5 border border-white/10 rounded-3xl p-6 md:p-10 relative overflow-hidden backdrop-blur-sm shadow-[0_0_50px_-12px_rgba(16,185,129,0.15)]">
+                <div className="card p-6 md:p-10 relative overflow-hidden">
                   <AnimatePresence mode="wait">
                     {auditStep === 'idle' && (
                       <motion.div 
@@ -2042,22 +2148,22 @@ function AppContent() {
                         className="space-y-6"
                       >
                         <div className="relative group">
-                          <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200" />
-                          <div className="relative flex flex-col sm:flex-row gap-4 bg-black/40 p-2 rounded-2xl border border-white/10">
+                          <div className="absolute -inset-1 bg-gradient-main rounded-2xl blur opacity-10 group-hover:opacity-20 transition duration-1000 group-hover:duration-200" />
+                          <div className="relative flex flex-col sm:flex-row gap-4 bg-surface p-2 rounded-2xl border border-border">
                             <div className="flex-1 flex items-center px-4 gap-3">
-                              <Globe className="w-5 h-5 text-emerald-400" />
+                              <Globe className="w-5 h-5 text-primary" />
                               <input 
                                 type="url" 
                                 placeholder="https://your-website.com"
                                 value={auditUrl}
                                 onChange={(e) => setAuditUrl(e.target.value)}
-                                className="bg-transparent border-none text-white placeholder:text-white/50 focus:ring-0 w-full text-lg"
+                                className="bg-transparent border-none text-text placeholder:text-text-muted focus:ring-0 w-full text-lg"
                               />
                             </div>
                             <button 
                               onClick={handleStartAudit}
                               disabled={!auditUrl}
-                              className="bg-emerald-500 text-black px-8 py-4 rounded-xl font-bold hover:bg-emerald-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 whitespace-nowrap"
+                              className="btn-primary px-8 py-4 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 whitespace-nowrap"
                             >
                               {t.auditBtn}
                               <ArrowRight className="w-5 h-5" />
@@ -2065,17 +2171,17 @@ function AppContent() {
                           </div>
                         </div>
                         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8">
-                          <div className="flex flex-wrap justify-center gap-6 text-sm font-bold text-white uppercase tracking-widest opacity-80">
+                          <div className="flex flex-wrap justify-center gap-6 text-sm font-bold text-text-secondary uppercase tracking-widest opacity-80">
                             <div className="flex items-center gap-2">
-                              <Zap className="w-4 h-4 text-emerald-500" />
+                              <Zap className="w-4 h-4 text-primary" />
                               {t.auditBadge1}
                             </div>
                             <div className="flex items-center gap-2">
-                              <Shield className="w-4 h-4 text-emerald-500" />
+                              <Shield className="w-4 h-4 text-success" />
                               {t.auditBadge2}
                             </div>
                             <div className="flex items-center gap-2">
-                              <Search className="w-4 h-4 text-emerald-400" />
+                              <Search className="w-4 h-4 text-info" />
                               LLM Visibility Check
                             </div>
                           </div>
@@ -2084,7 +2190,7 @@ function AppContent() {
                               setAuditUrl('example.com');
                               runAudit();
                             }}
-                            className="text-sm font-bold text-emerald-400 hover:text-emerald-300 transition-colors uppercase tracking-widest flex items-center gap-2"
+                            className="text-sm font-bold text-primary hover:text-primary/80 transition-colors uppercase tracking-widest flex items-center gap-2"
                           >
                             <Play className="w-3 h-3" />
                             Try with Sample
@@ -2102,12 +2208,12 @@ function AppContent() {
                         className="py-20 text-center space-y-12 max-w-2xl mx-auto relative"
                       >
                         {/* Scanning Grid Background */}
-                        <div className="absolute inset-0 opacity-10 pointer-events-none -z-10">
-                          <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, #10b981 1px, transparent 0)', backgroundSize: '32px 32px' }} />
+                        <div className="absolute inset-0 opacity-5 pointer-events-none -z-10">
+                          <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, var(--primary) 1px, transparent 0)', backgroundSize: '32px 32px' }} />
                           <motion.div 
                             animate={{ y: ['0%', '100%', '0%'] }}
                             transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
-                            className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-emerald-500 to-transparent blur-sm"
+                            className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary to-transparent blur-sm"
                           />
                         </div>
 
@@ -2116,20 +2222,20 @@ function AppContent() {
                           <motion.div 
                             animate={{ rotate: 360 }}
                             transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
-                            className="absolute inset-0 rounded-full border-2 border-dashed border-emerald-500/20"
+                            className="absolute inset-0 rounded-full border-2 border-dashed border-primary/20"
                           />
                           
                           {/* Inner progress ring */}
                           <svg className="w-full h-full -rotate-90 relative z-10">
                             <defs>
                               <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                                <stop offset="0%" stopColor="#10b981" />
-                                <stop offset="100%" stopColor="#06b6d4" />
+                                <stop offset="0%" stopColor="var(--primary)" />
+                                <stop offset="100%" stopColor="var(--info)" />
                               </linearGradient>
                             </defs>
                             <circle 
                               cx="96" cy="96" r="88" 
-                              className="stroke-white/5 fill-none" 
+                              className="stroke-border fill-none" 
                               strokeWidth="4" 
                             />
                             <motion.circle 
@@ -2150,11 +2256,11 @@ function AppContent() {
                               key={analysisProgress}
                               initial={{ scale: 0.8, opacity: 0 }}
                               animate={{ scale: 1, opacity: 1 }}
-                              className="text-5xl font-black text-white font-mono tracking-tighter"
+                              className="text-5xl font-black text-text font-mono tracking-tighter"
                             >
                               {analysisProgress}%
                             </motion.span>
-                            <span className="text-[10px] uppercase tracking-[0.3em] font-bold text-emerald-400 mt-1">Analyse</span>
+                            <span className="text-[10px] uppercase tracking-[0.3em] font-bold text-primary mt-1">Analyse</span>
                           </div>
 
                           {/* Scanning beam effect */}
@@ -2163,70 +2269,79 @@ function AppContent() {
                             transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
                             className="absolute inset-0 z-30 pointer-events-none"
                           >
-                            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1 h-1/2 bg-gradient-to-t from-emerald-500 to-transparent opacity-40 blur-sm" />
+                            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1 h-1/2 bg-gradient-to-t from-primary to-transparent opacity-40 blur-sm" />
                           </motion.div>
                         </div>
 
                         <div className="space-y-6">
                           <div className="space-y-2">
-                            <h3 className="text-3xl font-bold text-white tracking-tight">{t.auditAnalyzing}</h3>
-                            <p className="text-white/40 text-sm uppercase tracking-widest font-bold">Moteur de diagnostic RankEngine v4.0</p>
+                            <h3 className="text-3xl font-bold text-text tracking-tight">{t.auditAnalyzing}</h3>
+                            <p className="text-text-muted text-sm uppercase tracking-widest font-bold">Moteur de diagnostic Renk v4.0</p>
                           </div>
                           
                           <div className="flex flex-col items-center gap-4">
-                            <div className="max-w-md mx-auto space-y-4">
+                            <div className="max-w-md w-full mx-auto space-y-3 bg-bg-secondary p-6 rounded-md border border-border">
+                              <div className="flex items-center justify-between mb-4 border-b border-border pb-4">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                                  <span className="text-[10px] font-black text-text-muted uppercase tracking-widest">Status: Live Analysis</span>
+                                </div>
+                                <span className="text-[10px] font-mono text-primary/60">ID: {Math.random().toString(36).substr(2, 9).toUpperCase()}</span>
+                              </div>
+                              
                               {[
                                 { id: 'search', label: "Recherche d'entités locales...", progress: 20 },
                                 { id: 'ai', label: "Analyse de la visibilité IA (ChatGPT, Gemini)...", progress: 45 },
                                 { id: 'competitors', label: "Comparaison avec les concurrents réels...", progress: 70 },
                                 { id: 'strategy', label: "Génération de la feuille de route stratégique...", progress: 90 }
                               ].map((step, i) => (
-                                <div key={step.id} className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/10 transition-all">
-                                  <div className="relative w-6 h-6 flex items-center justify-center">
+                                <div key={step.id} className={`flex items-center gap-4 p-3 rounded-sm transition-all duration-500 ${analysisProgress >= step.progress ? 'bg-primary/5 border-primary/10' : 'bg-surface border-border'}`}>
+                                  <div className="relative w-5 h-5 flex items-center justify-center shrink-0">
                                     {analysisProgress >= step.progress ? (
                                       <motion.div 
-                                        initial={{ scale: 0 }}
-                                        animate={{ scale: 1 }}
-                                        className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center"
+                                        initial={{ scale: 0, rotate: -90 }}
+                                        animate={{ scale: 1, rotate: 0 }}
+                                        className="w-5 h-5 rounded-full bg-primary flex items-center justify-center"
                                       >
-                                        <Check className="w-4 h-4 text-black" />
+                                        <Check className="w-3 h-3 text-white" />
                                       </motion.div>
                                     ) : (
-                                      <div className="w-6 h-6 rounded-full border-2 border-white/20 flex items-center justify-center">
-                                        {analysisProgress > step.progress - 20 && (
+                                      <div className="w-5 h-5 rounded-full border border-border flex items-center justify-center">
+                                        {analysisProgress > step.progress - 25 && (
                                           <motion.div 
                                             animate={{ rotate: 360 }}
-                                            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                                            className="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full"
+                                            transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                                            className="w-3 h-3 border border-primary border-t-transparent rounded-full"
                                           />
                                         )}
                                       </div>
                                     )}
                                   </div>
-                                  <span className={`text-sm font-bold transition-colors ${analysisProgress >= step.progress ? 'text-emerald-400' : 'text-white/60'}`}>
-                                    {step.label}
-                                  </span>
+                                  <div className="flex-1 text-left">
+                                    <div className={`text-[11px] font-bold uppercase tracking-wider transition-colors duration-500 ${analysisProgress >= step.progress ? 'text-primary' : 'text-text-muted'}`}>
+                                      {step.label}
+                                    </div>
+                                    {analysisProgress > step.progress - 25 && analysisProgress < step.progress && (
+                                      <motion.div 
+                                        initial={{ width: 0 }}
+                                        animate={{ width: '100%' }}
+                                        className="h-[1px] bg-primary/30 mt-1"
+                                      />
+                                    )}
+                                  </div>
                                 </div>
                               ))}
+                            </div>
+                            
+                            <div className="text-[10px] font-mono text-text-muted uppercase tracking-[0.2em] animate-pulse mt-4">
+                              Connexion sécurisée aux API LLM établie...
                             </div>
                           </div>
                         </div>
                       </motion.div>
                     )}
 
-                    {auditStep === 'results' && auditData && auditData.companyName && (
-                      <motion.div key="results" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                        <div className="flex justify-between items-center pb-6 border-b border-white/10 mb-8">
-                          <div>
-                            <div className="flex items-center gap-2 text-emerald-400 mb-1 text-sm font-mono">{auditUrl}</div>
-                            <h3 className="text-2xl font-bold">Rapport d'Intelligence de Visibilité</h3>
-                          </div>
-                          <button onClick={() => setAuditStep('idle')} className="px-5 py-2 bg-emerald-500 text-black rounded-xl font-bold hover:bg-emerald-400 transition-all">Nouvel Audit</button>
-                        </div>
-                        <AuditReport data={auditData} url={auditUrl} onContact={() => setView('conversion')} />
-                      </motion.div>
-                    )}
-                    {auditStep === 'results' && auditData && auditData.companyName && false && (
+                    {auditStep === 'results' && auditData && (
                       <motion.div 
                         key="results"
                         initial={{ opacity: 0 }}
@@ -2234,35 +2349,35 @@ function AppContent() {
                         className="space-y-12"
                       >
                         {/* Results Header */}
-                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 pb-8 border-b border-white/10">
+                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 pb-8 border-b border-border">
                           <div>
-                            <div className="flex items-center gap-2 text-emerald-400 mb-2">
+                            <div className="flex items-center gap-2 text-primary mb-2">
                               <Globe className="w-4 h-4" />
                               <span className="text-sm font-medium">{auditUrl}</span>
                             </div>
-                            <h3 className="text-3xl font-bold text-white">{t.auditResults}</h3>
+                            <h3 className="text-3xl font-bold text-text">{t.auditResults}</h3>
                           </div>
                           <div className="flex gap-3">
                             <button 
                               onClick={handleShare}
-                              className="p-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors relative group"
+                              className="p-3 rounded-md bg-surface border border-border hover:bg-bg-secondary transition-colors relative group"
                             >
                               <Share2 className="w-5 h-5" />
-                              <span className="absolute -top-10 left-1/2 -translate-x-1/2 px-2 py-1 bg-zinc-800 text-xs font-bold rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap border border-white/10">{t.auditShareReport}</span>
+                              <span className="absolute -top-10 left-1/2 -translate-x-1/2 px-2 py-1 bg-text text-white text-xs font-bold rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap border border-border">{t.auditShareReport}</span>
                             </button>
                             <button 
                               onClick={handleDownload}
                               disabled={isDownloading}
-                              className="p-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors relative group disabled:opacity-50"
+                              className="p-3 rounded-md bg-surface border border-border hover:bg-bg-secondary transition-colors relative group disabled:opacity-50"
                             >
-                              {isDownloading ? <Loader2 className="w-5 h-5 animate-spin text-emerald-400" /> : <Download className="w-5 h-5" />}
-                              <span className="absolute -top-10 left-1/2 -translate-x-1/2 px-2 py-1 bg-zinc-800 text-xs font-bold rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap border border-white/10">
+                              {isDownloading ? <Loader2 className="w-5 h-5 animate-spin text-primary" /> : <Download className="w-5 h-5" />}
+                              <span className="absolute -top-10 left-1/2 -translate-x-1/2 px-2 py-1 bg-text text-white text-xs font-bold rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap border border-border">
                                 {isDownloading ? t.auditGenerating : t.auditDownloadPDF}
                               </span>
                             </button>
                             <button 
                               onClick={() => setAuditStep('idle')}
-                              className="px-6 py-3 rounded-xl bg-emerald-500 text-black font-bold hover:bg-emerald-400 transition-all shadow-[0_0_15px_rgba(16,185,129,0.2)]"
+                              className="btn-primary px-6 py-3"
                             >
                               {t.auditNewAudit}
                             </button>
@@ -2272,19 +2387,19 @@ function AppContent() {
                         {/* Main Scores */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                           {[
-                            { label: t.scoreVisibility, value: auditData.scores?.visibility || 0, color: 'text-emerald-400', icon: Eye, desc: t.auditAiVisibility },
-                            { label: t.scoreSentiment, value: auditData.scores?.sentiment || 0, color: 'text-cyan-400', icon: Smile, desc: t.auditBrandSentiment },
-                            { label: t.scoreAuthority, value: auditData.scores?.authority || 0, color: 'text-purple-400', icon: Award, desc: t.auditSemanticAuthority },
-                            { label: t.scoreAccuracy, value: auditData.scores?.accuracy || 0, color: 'text-amber-400', icon: CheckCircle, desc: t.auditDataAccuracy }
+                            { label: t.scoreVisibility, value: auditData.scores?.visibility || 0, color: 'text-primary', icon: Eye, desc: t.auditAiVisibility },
+                            { label: t.scoreSentiment, value: auditData.scores?.sentiment || 0, color: 'text-info', icon: Smile, desc: t.auditBrandSentiment },
+                            { label: t.scoreAuthority, value: auditData.scores?.authority || 0, color: 'text-primary', icon: Award, desc: t.auditSemanticAuthority },
+                            { label: t.scoreAccuracy, value: auditData.scores?.accuracy || 0, color: 'text-warning', icon: CheckCircle, desc: t.auditDataAccuracy }
                           ].map((score, i) => (
-                            <div key={i} className="bg-white/5 border border-white/10 p-8 rounded-3xl text-center group hover:border-white/20 transition-all relative overflow-hidden shadow-lg">
+                            <div key={i} className="card p-8 text-center group relative overflow-hidden">
                               <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${score.color.replace('text-', 'from-').replace('400', '500')} to-transparent opacity-50`} />
-                              <div className={`w-12 h-12 mx-auto mb-6 rounded-2xl bg-white/5 flex items-center justify-center ${score.color} group-hover:scale-110 transition-transform`}>
+                              <div className={`w-12 h-12 mx-auto mb-6 rounded-md bg-bg-secondary flex items-center justify-center ${score.color} group-hover:scale-110 transition-transform`}>
                                 <score.icon className="w-6 h-6" />
                               </div>
                               <div className={`text-5xl font-black mb-2 ${score.color} font-mono tracking-tighter`}>{score.value}%</div>
-                              <div className="text-xs uppercase tracking-[0.2em] font-black text-white/40 mb-2">{score.label}</div>
-                              <div className="text-sm text-white font-bold leading-tight">{score.desc}</div>
+                              <div className="text-xs uppercase tracking-[0.2em] font-black text-text-muted mb-2">{score.label}</div>
+                              <div className="text-sm text-text font-bold leading-tight">{score.desc}</div>
                             </div>
                           ))}
                         </div>
@@ -2292,73 +2407,80 @@ function AppContent() {
                         {/* AI Search Presence & Technical Health */}
                         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
                           {/* AI Search Presence */}
-                          <div className="lg:col-span-2 bg-black/40 border border-white/10 p-8 rounded-3xl">
+                          <div className="lg:col-span-2 card p-8">
                             <h4 className="text-xl font-bold mb-8 flex items-center gap-3">
-                              <Search className="w-6 h-6 text-emerald-400" />
+                              <Search className="w-6 h-6 text-primary" />
                               {t.auditAiSearchPresence}
                             </h4>
                             <div className="grid sm:grid-cols-3 gap-6">
-                              {auditData.aiSearchPresence?.map((p, i) => (
-                                <div key={i} className="p-5 rounded-2xl bg-white/5 border border-white/10 space-y-4 hover:border-emerald-500/30 transition-colors group">
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-sm font-bold text-white">{p.platform}</span>
-                                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-tighter ${
-                                      p.status === 'High Visibility' || p.status === 'Haute Visibilité' ? 'bg-emerald-500/20 text-emerald-400' : 
-                                      p.status === 'Mentioned' || p.status === 'Mentionné' ? 'bg-cyan-500/20 text-cyan-400' : 'bg-white/10 text-white opacity-80'
-                                    }`}>
-                                      {p.status}
-                                    </span>
+                              {auditData.aiSearchPresence && auditData.aiSearchPresence.length > 0 ? (
+                                auditData.aiSearchPresence.map((p, i) => (
+                                  <div key={i} className="p-5 rounded-md bg-bg-secondary border border-border space-y-4 hover:border-primary/30 transition-colors group">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-sm font-bold text-text">{p.platform}</span>
+                                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-tighter ${
+                                        p.status === 'High Visibility' || p.status === 'Haute Visibilité' ? 'bg-success/20 text-success' : 
+                                        p.status === 'Mentioned' || p.status === 'Mentionné' ? 'bg-info/20 text-info' : 'bg-bg-primary text-text-muted'
+                                      }`}>
+                                        {p.status}
+                                      </span>
+                                    </div>
+                                    <div className="relative">
+                                      <Quote className="w-4 h-4 text-primary/20 absolute -top-2 -left-2" />
+                                      <p className="text-sm text-text-secondary leading-relaxed italic pl-4">"{p.context}"</p>
+                                    </div>
                                   </div>
-                                  <div className="relative">
-                                    <Quote className="w-4 h-4 text-emerald-500/20 absolute -top-2 -left-2" />
-                                    <p className="text-sm text-white/80 leading-relaxed italic pl-4">"{p.context}"</p>
-                                  </div>
+                                ))
+                              ) : (
+                                <div className="col-span-3 text-sm text-text-muted italic p-4 text-center border border-border rounded-md">
+                                  Données de présence IA non disponibles.
                                 </div>
-                              ))}
+                              )}
                             </div>
                           </div>
 
                           {/* Technical Health */}
-                          <div className="bg-black/40 border border-white/10 p-8 rounded-3xl">
+                          <div className="card p-8">
                             <h4 className="text-xl font-bold mb-8 flex items-center gap-3">
-                              <Activity className="w-6 h-6 text-cyan-400" />
+                              <Activity className="w-6 h-6 text-info" />
                               {t.auditTechnicalHealth}
                             </h4>
                             <div className="grid grid-cols-2 gap-6">
                               {[
-                                { label: t.auditPerformance, value: auditData.technicalHealth?.performance },
-                                { label: t.auditAccessibility, value: auditData.technicalHealth?.accessibility },
-                                { label: t.auditBestPractices, value: auditData.technicalHealth?.bestPractices },
-                                { label: t.auditSeo, value: auditData.technicalHealth?.seo }
+                                { label: t.auditPerformance, value: auditData.technicalHealth?.performance || 0 },
+                                { label: t.auditAccessibility, value: auditData.technicalHealth?.accessibility || 0 },
+                                { label: t.auditBestPractices, value: auditData.technicalHealth?.bestPractices || 0 },
+                                { label: t.auditSeo, value: auditData.technicalHealth?.seo || 0 }
                               ].map((item, i) => (
                                 <div key={i} className="text-center space-y-2">
                                   <div className="relative w-16 h-16 mx-auto">
                                     <svg className="w-full h-full -rotate-90">
-                                      <circle cx="32" cy="32" r="28" stroke="currentColor" strokeWidth="4" fill="transparent" className="text-white/5" />
+                                      <circle cx="32" cy="32" r="28" stroke="currentColor" strokeWidth="4" fill="transparent" className="text-border" />
                                       <motion.circle 
                                         cx="32" cy="32" r="28" stroke="currentColor" strokeWidth="4" fill="transparent" 
                                         strokeDasharray={175.9}
                                         initial={{ strokeDashoffset: 175.9 }}
                                         animate={{ strokeDashoffset: 175.9 - (175.9 * (item.value || 0)) / 100 }}
                                         transition={{ duration: 1.5, delay: 0.5 + i * 0.1 }}
-                                        className="text-cyan-500" 
+                                        className="text-info" 
                                       />
                                     </svg>
-                                    <div className="absolute inset-0 flex items-center justify-center text-sm font-bold text-white">
+                                    <div className="absolute inset-0 flex items-center justify-center text-sm font-bold text-text">
                                       {item.value}%
                                     </div>
                                   </div>
-                                  <div className="text-[10px] sm:text-xs uppercase tracking-wider font-bold text-white leading-tight">{item.label}</div>
+                                  <div className="text-[10px] sm:text-xs uppercase tracking-wider font-bold text-text leading-tight">{item.label}</div>
                                 </div>
                               ))}
                             </div>
-                            <div className="mt-8 pt-6 border-t border-white/5 flex items-center justify-between">
-                              <span className="text-sm font-bold text-white uppercase tracking-widest">{t.auditCoreWebVitals}</span>
+                            <div className="mt-8 pt-6 border-t border-border flex items-center justify-between">
+                              <span className="text-sm font-bold text-text uppercase tracking-widest">{t.auditCoreWebVitals}</span>
                               <span className={`text-sm font-black ${
-                                auditData.technicalHealth?.coreWebVitals === 'Passing' || auditData.technicalHealth?.coreWebVitals === 'Réussi' ? 'text-emerald-400' : 
-                                auditData.technicalHealth?.coreWebVitals === 'Needs Improvement' || auditData.technicalHealth?.coreWebVitals === 'À améliorer' ? 'text-amber-400' : 'text-rose-400'
+                                auditData.technicalHealth?.coreWebVitals === 'Passing' || auditData.technicalHealth?.coreWebVitals === 'Réussi' ? 'text-success' : 
+                                auditData.technicalHealth?.coreWebVitals === 'Needs Improvement' || auditData.technicalHealth?.coreWebVitals === 'À améliorer' ? 'text-warning' : 
+                                auditData.technicalHealth?.coreWebVitals ? 'text-error' : 'text-text-muted'
                               }`}>
-                                {auditData.technicalHealth?.coreWebVitals}
+                                {auditData.technicalHealth?.coreWebVitals || 'N/A'}
                               </span>
                             </div>
                           </div>
@@ -2367,32 +2489,46 @@ function AppContent() {
                         {/* LLM Ratings & Competitor AI Visibility */}
                         <div className="grid md:grid-cols-2 gap-8">
                           {/* LLM Ratings */}
-                          <div className="bg-black/40 border border-white/10 p-8 rounded-3xl">
+                          <div className="card p-8">
                             <h4 className="text-xl font-bold mb-8 flex items-center gap-3">
-                              <Cpu className="w-6 h-6 text-purple-400" />
+                              <Cpu className="w-6 h-6 text-primary" />
                               {t.auditLlmRatings}
                             </h4>
                             <div className="space-y-6">
-                              {auditData.llmRatings?.map((rating, i) => (
-                                <div key={i} className="space-y-2">
-                                  <div className="flex justify-between items-center">
-                                    <span className="text-sm font-bold text-white">{rating.model}</span>
-                                    <span className="text-sm font-black text-purple-400">{rating.score}/10</span>
+                              {auditData.llmRatings && auditData.llmRatings.length > 0 ? (
+                                auditData.llmRatings.map((rating, i) => (
+                                  <div key={i} className="space-y-2">
+                                    <div className="flex justify-between items-center">
+                                      <span className="text-sm font-bold text-text">{rating.model}</span>
+                                      <span className={`text-sm font-black ${
+                                        rating.score >= 70 ? 'text-success' :
+                                        rating.score >= 40 ? 'text-warning' :
+                                        'text-error'
+                                      }`}>{rating.score}/100</span>
+                                    </div>
+                                    <div className="h-2 bg-bg-secondary rounded-full overflow-hidden">
+                                      <motion.div 
+                                        initial={{ width: 0 }}
+                                        animate={{ width: `${rating.score}%` }}
+                                        transition={{ duration: 1, delay: i * 0.1 }}
+                                        className={`h-full ${
+                                          rating.score >= 70 ? 'bg-gradient-to-r from-success to-success/80' :
+                                          rating.score >= 40 ? 'bg-gradient-to-r from-warning to-warning/80' :
+                                          'bg-gradient-to-r from-error to-error/80'
+                                        }`}
+                                      />
+                                    </div>
+                                    <p className="text-xs text-text-secondary italic">"{rating.reasoning}"</p>
                                   </div>
-                                  <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-                                    <motion.div 
-                                      initial={{ width: 0 }}
-                                      animate={{ width: `${rating.score * 10}%` }}
-                                      transition={{ duration: 1, delay: i * 0.1 }}
-                                      className="h-full bg-gradient-to-r from-purple-500 to-purple-400"
-                                    />
-                                  </div>
-                                  <p className="text-xs text-white/60 italic">"{rating.reasoning}"</p>
+                                ))
+                              ) : (
+                                <div className="text-sm text-text-muted italic p-4 text-center border border-border rounded-md">
+                                  Évaluations LLM non disponibles.
                                 </div>
-                              ))}
-                              <div className="mt-6 p-4 rounded-xl bg-purple-500/5 border border-purple-500/10 flex items-start gap-3">
-                                <Info className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />
-                                <p className="text-[10px] text-purple-400/80 leading-relaxed font-bold italic">
+                              )}
+                              <div className="mt-6 p-4 rounded-md bg-primary/5 border border-primary/10 flex items-start gap-3">
+                                <Info className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                                <p className="text-[10px] text-primary/80 leading-relaxed font-bold italic">
                                   Note : Ces évaluations sont basées sur les données d'entraînement des LLM et peuvent varier selon les mises à jour en temps réel des modèles. Elles représentent une perception synthétique du marché.
                                 </p>
                               </div>
@@ -2400,104 +2536,110 @@ function AppContent() {
                           </div>
 
                           {/* Competitor AI Visibility */}
-                          <div className="bg-black/40 border border-white/10 p-8 rounded-3xl">
+                          <div className="card p-8">
                             <h4 className="text-xl font-bold mb-8 flex items-center gap-3">
-                              <Users className="w-6 h-6 text-emerald-400" />
+                              <Users className="w-6 h-6 text-primary" />
                               {t.auditCompetitorAiVisibility}
                             </h4>
                             <div className="space-y-4">
-                              {auditData.aiCompetitors?.map((comp, i) => (
-                                <div key={i} className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-emerald-500/30 transition-all group">
-                                  <div className="flex items-center justify-between mb-4">
-                                    <div className="flex items-center gap-3">
-                                      <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400 font-black text-lg border border-emerald-500/20">
-                                        {comp.name.charAt(0)}
-                                      </div>
-                                      <div>
-                                        <div className="text-base font-bold text-white">{comp.name}</div>
-                                        <div className="text-[10px] text-white/40 uppercase tracking-widest font-black">{comp.strength}</div>
-                                      </div>
-                                    </div>
-                                    <div className="text-right">
-                                      <div className="text-xl font-black text-emerald-400 font-mono tracking-tighter">
-                                        {typeof comp.visibility === 'number' ? `${comp.visibility}%` : comp.visibility}
-                                      </div>
-                                      <span className={`text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-widest ${
-                                        comp.status === 'Dominant' ? 'bg-emerald-500/20 text-emerald-400' :
-                                        comp.status === 'Established' ? 'bg-cyan-500/20 text-cyan-400' :
-                                        comp.status === 'Emerging' ? 'bg-amber-500/20 text-amber-400' : 'bg-white/10 text-white/60'
-                                      }`}>
-                                        {comp.status}
-                                      </span>
-                                    </div>
-                                  </div>
-                                  <div className="space-y-3 border-t border-white/5 pt-4 mt-4">
-                                    {comp.context && (
-                                      <div className="flex gap-3">
-                                        <div className="w-1 h-auto bg-emerald-500/30 rounded-full" />
-                                        <p className="text-xs text-white/70 leading-relaxed italic">
-                                          {comp.context}
-                                        </p>
-                                      </div>
-                                    )}
-                                    {comp.strategy && (
-                                      <div className="p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/10 flex items-start gap-3">
-                                        <Zap className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                                        <div className="text-[11px] text-emerald-400 font-bold leading-relaxed">
-                                          <span className="uppercase tracking-widest opacity-60 mr-2">Stratégie :</span>
-                                          {comp.strategy}
+                              {auditData.aiCompetitors && auditData.aiCompetitors.length > 0 ? (
+                                auditData.aiCompetitors.map((comp, i) => (
+                                  <div key={i} className="p-4 rounded-md bg-bg-secondary border border-border hover:border-primary/30 transition-all group">
+                                    <div className="flex items-center justify-between mb-4">
+                                      <div className="flex items-center gap-3">
+                                        <div className="w-12 h-12 rounded-md bg-primary/10 flex items-center justify-center text-primary font-black text-lg border border-primary/20">
+                                          {comp.name.charAt(0)}
+                                        </div>
+                                        <div>
+                                          <div className="text-base font-bold text-text">{comp.name}</div>
+                                          <div className="text-[10px] text-text-muted uppercase tracking-widest font-black">{comp.strength}</div>
                                         </div>
                                       </div>
-                                    )}
+                                      <div className="text-right">
+                                        <div className="text-xl font-black text-primary font-mono tracking-tighter">
+                                          {typeof comp.visibility === 'number' ? `${comp.visibility}%` : comp.visibility}
+                                        </div>
+                                        <span className={`text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-widest ${
+                                          comp.status === 'Dominant' ? 'bg-success/20 text-success' :
+                                          comp.status === 'Established' ? 'bg-info/20 text-info' :
+                                          comp.status === 'Emerging' ? 'bg-warning/20 text-warning' : 'bg-bg-primary text-text-muted'
+                                        }`}>
+                                          {comp.status}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <div className="space-y-3 border-t border-border pt-4 mt-4">
+                                      {comp.context && (
+                                        <div className="flex gap-3">
+                                          <div className="w-1 h-auto bg-primary/30 rounded-full" />
+                                          <p className="text-xs text-text-secondary leading-relaxed italic">
+                                            {comp.context}
+                                          </p>
+                                        </div>
+                                      )}
+                                      {comp.strategy && (
+                                        <div className="p-3 rounded-md bg-primary/5 border border-primary/10 flex items-start gap-3">
+                                          <Zap className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                                          <div className="text-[11px] text-primary font-bold leading-relaxed">
+                                            <span className="uppercase tracking-widest opacity-60 mr-2">Stratégie :</span>
+                                            {comp.strategy}
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
                                   </div>
+                                ))
+                              ) : (
+                                <div className="text-sm text-text-muted italic p-4 text-center border border-border rounded-md">
+                                  Analyse concurrentielle en cours de traitement.
                                 </div>
-                              ))}
+                              )}
                             </div>
                           </div>
                         </div>
 
                         {/* Detailed Keywords Table */}
                         {auditData.detailedKeywords && auditData.detailedKeywords.length > 0 && (
-                          <div className="bg-black/40 border border-white/10 p-8 rounded-3xl">
+                          <div className="card p-8">
                             <h4 className="text-xl font-bold mb-8 flex items-center gap-3">
-                              <Target className="w-6 h-6 text-emerald-400" />
+                              <Target className="w-6 h-6 text-primary" />
                               {t.auditDetailedKeywords}
                             </h4>
                             <div className="overflow-x-auto custom-scrollbar">
                               <table className="w-full text-left border-collapse min-w-[700px]">
                                 <thead>
-                                  <tr className="border-b border-white/10">
-                                    <th className="py-4 px-4 text-xs uppercase tracking-widest font-bold text-white/60">{t.auditKeyword}</th>
-                                    <th className="py-4 px-4 text-xs uppercase tracking-widest font-bold text-white/60">{t.auditIntent}</th>
-                                    <th className="py-4 px-4 text-xs uppercase tracking-widest font-bold text-white/60">{t.auditVolume}</th>
-                                    <th className="py-4 px-4 text-xs uppercase tracking-widest font-bold text-white/60">{t.auditKd}</th>
-                                    <th className="py-4 px-4 text-xs uppercase tracking-widest font-bold text-white/60">{t.auditScore}</th>
+                                  <tr className="border-b border-border">
+                                    <th className="py-4 px-4 text-xs uppercase tracking-widest font-bold text-text-muted">{t.auditKeyword}</th>
+                                    <th className="py-4 px-4 text-xs uppercase tracking-widest font-bold text-text-muted">{t.auditIntent}</th>
+                                    <th className="py-4 px-4 text-xs uppercase tracking-widest font-bold text-text-muted">{t.auditVolume}</th>
+                                    <th className="py-4 px-4 text-xs uppercase tracking-widest font-bold text-text-muted">{t.auditKd}</th>
+                                    <th className="py-4 px-4 text-xs uppercase tracking-widest font-bold text-text-muted">{t.auditScore}</th>
                                   </tr>
                                 </thead>
                                 <tbody>
                                   {auditData.detailedKeywords.map((kw, i) => (
-                                    <tr key={i} className="border-b border-white/5 hover:bg-white/5 transition-colors group">
+                                    <tr key={i} className="border-b border-border hover:bg-bg-secondary transition-colors group">
                                       <td className="py-4 px-4">
-                                        <div className="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors">{kw.keyword}</div>
+                                        <div className="text-sm font-bold text-text group-hover:text-primary transition-colors">{kw.keyword}</div>
                                       </td>
                                       <td className="py-4 px-4">
                                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-tighter ${
-                                          kw.intent === 'Commercial' || kw.intent === 'Commerciale' ? 'bg-purple-500/20 text-purple-400' :
-                                          kw.intent === 'Informational' || kw.intent === 'Informationnelle' ? 'bg-cyan-500/20 text-cyan-400' : 'bg-white/10 text-white'
+                                          kw.intent === 'Commercial' || kw.intent === 'Commerciale' ? 'bg-primary/20 text-primary' :
+                                          kw.intent === 'Informational' || kw.intent === 'Informationnelle' ? 'bg-info/20 text-info' : 'bg-bg-primary text-text-muted'
                                         }`}>
                                           {kw.intent}
                                         </span>
                                       </td>
-                                      <td className="py-4 px-4 text-sm font-mono text-white/80">{kw.volume.toLocaleString()}</td>
+                                      <td className="py-4 px-4 text-sm font-mono text-text-secondary">{kw.volume?.toLocaleString() || 0}</td>
                                       <td className="py-4 px-4">
                                         <div className="flex items-center gap-2">
-                                          <div className="w-12 h-1.5 bg-white/5 rounded-full overflow-hidden">
-                                            <div className={`h-full ${kw.kd < 30 ? 'bg-emerald-500' : kw.kd < 60 ? 'bg-amber-500' : 'bg-rose-500'}`} style={{ width: `${kw.kd}%` }} />
+                                          <div className="w-12 h-1.5 bg-bg-secondary rounded-full overflow-hidden">
+                                            <div className={`h-full ${(kw.kd || 0) < 30 ? 'bg-success' : (kw.kd || 0) < 60 ? 'bg-warning' : 'bg-error'}`} style={{ width: `${kw.kd || 0}%` }} />
                                           </div>
-                                          <span className="text-xs font-bold text-white/60">{kw.kd}%</span>
+                                          <span className="text-xs font-bold text-text-muted">{kw.kd || 0}%</span>
                                         </div>
                                       </td>
-                                      <td className="py-4 px-4 text-sm font-black text-emerald-400">+{kw.opportunityScore}%</td>
+                                      <td className="py-4 px-4 text-sm font-black text-primary">+{kw.opportunityScore || 0}%</td>
                                     </tr>
                                   ))}
                                 </tbody>
@@ -2508,51 +2650,51 @@ function AppContent() {
 
                         {/* Semantic Terms Analysis */}
                         {auditData.semanticTerms && auditData.semanticTerms.length > 0 && (
-                          <div className="bg-black/40 border border-white/10 p-8 rounded-3xl">
+                          <div className="card p-8">
                             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                               <h4 className="text-xl font-bold flex items-center gap-3">
-                                <Database className="w-6 h-6 text-emerald-400" />
+                                <Database className="w-6 h-6 text-primary" />
                                 {t.auditSemanticDensity}
                               </h4>
                               <div className="flex gap-4">
-                                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-emerald-400">
-                                  <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-success">
+                                  <div className="w-2 h-2 rounded-full bg-success" />
                                   {t.auditStatusOptimal}
                                 </div>
-                                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-amber-400">
-                                  <div className="w-2 h-2 rounded-full bg-amber-500" />
+                                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-warning">
+                                  <div className="w-2 h-2 rounded-full bg-warning" />
                                   {t.auditStatusLow}
                                 </div>
-                                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-rose-400">
-                                  <div className="w-2 h-2 rounded-full bg-rose-500" />
+                                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-error">
+                                  <div className="w-2 h-2 rounded-full bg-error" />
                                   {t.auditStatusHigh}
                                 </div>
                               </div>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[500px] overflow-y-auto pr-4 custom-scrollbar">
                               {auditData.semanticTerms.map((term, i) => (
-                                <div key={i} className="p-4 rounded-xl bg-white/5 border border-white/5 hover:border-emerald-500/30 transition-all group flex flex-col gap-2">
+                                <div key={i} className="p-4 rounded-md bg-bg-secondary border border-border hover:border-primary/30 transition-all group flex flex-col gap-2">
                                   <div className="flex justify-between items-start">
-                                    <div className="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors truncate pr-2">{term.term}</div>
+                                    <div className="text-sm font-bold text-text group-hover:text-primary transition-colors truncate pr-2">{term.term}</div>
                                     <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-black uppercase tracking-tighter shrink-0 ${
-                                      term.status === 'optimal' ? 'bg-emerald-500/20 text-emerald-400' :
-                                      term.status === 'low' ? 'bg-amber-500/20 text-amber-400' : 'bg-rose-500/20 text-rose-400'
+                                      term.status === 'optimal' ? 'bg-success/20 text-success' :
+                                      term.status === 'low' ? 'bg-warning/20 text-warning' : 'bg-error/20 text-error'
                                     }`}>
                                       {term.status === 'optimal' ? t.auditStatusOptimal : term.status === 'low' ? t.auditStatusLow : t.auditStatusHigh}
                                     </span>
                                   </div>
                                   <div className="flex items-center gap-3">
-                                    <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
+                                    <div className="flex-1 h-1.5 bg-bg-primary rounded-full overflow-hidden">
                                       <motion.div 
                                         initial={{ width: 0 }}
-                                        animate={{ width: `${Math.min(term.density * 20, 100)}%` }}
+                                        animate={{ width: `${Math.min((term.density || 0) * 20, 100)}%` }}
                                         className={`h-full ${
-                                          term.status === 'optimal' ? 'bg-emerald-500' :
-                                          term.status === 'low' ? 'bg-amber-500' : 'bg-rose-500'
+                                          term.status === 'optimal' ? 'bg-success' :
+                                          term.status === 'low' ? 'bg-warning' : 'bg-error'
                                         }`}
                                       />
                                     </div>
-                                    <span className="text-[10px] font-mono font-black text-white/40">{term.density}%</span>
+                                    <span className="text-[10px] font-mono font-black text-text-muted">{term.density || 0}%</span>
                                   </div>
                                 </div>
                               ))}
@@ -2562,47 +2704,51 @@ function AppContent() {
 
                         {/* Semantic Density & Market Analysis */}
                         <div className="grid md:grid-cols-2 gap-8">
-                          <div className="bg-gradient-to-br from-purple-500/10 to-emerald-500/10 border border-white/10 p-8 rounded-3xl relative overflow-hidden">
+                          <div className="bg-gradient-to-br from-primary/10 to-info/10 border border-border p-8 rounded-md relative overflow-hidden">
                             <div className="absolute top-0 right-0 p-6 opacity-10">
-                              <Database className="w-24 h-24 text-purple-400" />
+                              <Database className="w-24 h-24 text-primary" />
                             </div>
                             <div className="relative z-10">
                               <h4 className="text-xl font-bold mb-6 flex items-center gap-3">
-                                <Brain className="w-6 h-6 text-purple-400" />
+                                <Brain className="w-6 h-6 text-primary" />
                                 {t.auditSemanticDensity}
                               </h4>
                               <div className="space-y-6">
                                 <div className="flex items-end gap-4">
-                                  <div className="text-5xl font-black text-white font-mono">{auditData.semanticDensity}%</div>
-                                  <div className="text-sm text-white mb-2 font-bold uppercase tracking-widest">{t.auditTopicAuthority}</div>
+                                  <div className="text-5xl font-black text-text font-mono">{auditData.semanticDensity || 0}%</div>
+                                  <div className="text-sm text-text mb-2 font-bold uppercase tracking-widest">{t.auditTopicAuthority}</div>
                                 </div>
-                                <p className="text-base text-white leading-relaxed">
+                                <p className="text-base text-text-secondary leading-relaxed">
                                   {t.auditSemanticDensityDesc.replace('{density}', auditData.semanticDensity?.toString() || '0')}
                                 </p>
                                 <div className="flex flex-wrap gap-2">
-                                  {auditData.keywords.map((k, i) => (
-                                    <span key={i} className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-sm font-bold text-white uppercase tracking-wider">
-                                      {k}
-                                    </span>
-                                  ))}
+                                  {auditData.keywords && auditData.keywords.length > 0 ? (
+                                    auditData.keywords.map((k, i) => (
+                                      <span key={i} className="px-3 py-1 rounded-full bg-bg-secondary border border-border text-sm font-bold text-text uppercase tracking-wider">
+                                        {k}
+                                      </span>
+                                    ))
+                                  ) : (
+                                    <span className="text-sm text-text-muted italic">Mots-clés non disponibles.</span>
+                                  )}
                                 </div>
                               </div>
                             </div>
                           </div>
 
-                          <div className="bg-black/40 border border-white/10 p-8 rounded-3xl">
+                          <div className="card p-8">
                             <h4 className="text-xl font-bold mb-6 flex items-center gap-3">
-                              <Target className="w-6 h-6 text-amber-400" />
+                              <Target className="w-6 h-6 text-warning" />
                               {t.auditMarketAnalysis}
                             </h4>
                             <div className="space-y-4">
-                              <div className="p-4 rounded-2xl bg-amber-500/5 border border-amber-500/10">
-                                <div className="text-sm font-bold text-amber-400 uppercase tracking-widest mb-2">{t.auditExecutiveOverview}</div>
-                                <p className="text-base text-white leading-relaxed">{auditData.marketAnalysis}</p>
+                              <div className="p-4 rounded-md bg-warning/5 border border-warning/10">
+                                <div className="text-sm font-bold text-warning uppercase tracking-widest mb-2">{t.auditExecutiveOverview}</div>
+                                <p className="text-base text-text-secondary leading-relaxed">{auditData.marketAnalysis || "Analyse de marché non disponible."}</p>
                               </div>
-                              <div className="p-4 rounded-2xl bg-emerald-500/5 border border-emerald-500/10">
-                                <div className="text-sm font-bold text-emerald-400 uppercase tracking-widest mb-2">{t.auditAiRecommendations}</div>
-                                <p className="text-base text-white leading-relaxed">{auditData.aiRecommendation}</p>
+                              <div className="p-4 rounded-md bg-success/5 border border-success/10">
+                                <div className="text-sm font-bold text-success uppercase tracking-widest mb-2">{t.auditAiRecommendations}</div>
+                                <p className="text-base text-text-secondary leading-relaxed">{auditData.aiRecommendation || "Recommandation IA non disponible."}</p>
                               </div>
                             </div>
                           </div>
@@ -2612,196 +2758,220 @@ function AppContent() {
                         <div className="grid lg:grid-cols-3 gap-8">
                           {/* Visibility Chart */}
                           <div className="lg:col-span-2 space-y-8">
-                            <div className="bg-black/40 border border-white/10 p-8 rounded-3xl">
+                            <div className="card p-8">
                               <div className="flex items-center justify-between mb-8">
                                 <h4 className="text-xl font-bold flex items-center gap-2">
-                                  <BarChart3 className="w-5 h-5 text-emerald-400" />
+                                  <BarChart3 className="w-5 h-5 text-primary" />
                                   {t.auditVisibilityByPlatform}
                                 </h4>
-                                <div className="flex gap-4 text-sm font-bold uppercase tracking-widest text-white">
+                                <div className="flex gap-4 text-sm font-bold uppercase tracking-widest text-text">
                                   <div className="flex items-center gap-2">
-                                    <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                                    <div className="w-2 h-2 rounded-full bg-primary" />
                                     {t.auditCurrent}
                                   </div>
                                   <div className="flex items-center gap-2">
-                                    <div className="w-2 h-2 rounded-full bg-white/10" />
+                                    <div className="w-2 h-2 rounded-full bg-text-muted/20" />
                                     {t.auditIndustryAvg}
                                   </div>
                                 </div>
                               </div>
                               <div className="h-[300px] w-full">
-                                <ResponsiveContainer width="100%" height="100%">
-                                  <BarChart data={auditData.platformVisibility || []}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
-                                    <XAxis 
-                                      dataKey="name" 
-                                      axisLine={false} 
-                                      tickLine={false} 
-                                      tick={{ fill: '#71717a', fontSize: 12, fontWeight: 600 }}
-                                      dy={10}
-                                    />
-                                    <YAxis hide />
-                                    <Tooltip 
-                                      cursor={{ fill: '#ffffff05' }}
-                                      content={({ active, payload }) => {
-                                        if (active && payload && payload.length) {
-                                          return (
-                                            <div className="bg-zinc-900 border border-white/10 p-4 rounded-xl shadow-2xl backdrop-blur-md">
-                                              <div className="text-sm font-bold mb-2">{payload[0]?.payload?.name || ''}</div>
-                                              <div className="space-y-1">
-                                                <div className="text-xs flex justify-between gap-8">
-                                                  <span className="text-white font-bold opacity-80">{t.auditVisibilityScore}:</span>
-                                                  <span className="text-emerald-400 font-bold">{payload[0]?.value ?? 0}%</span>
-                                                </div>
-                                                <div className="text-xs flex justify-between gap-8">
-                                                  <span className="text-white font-bold opacity-80">{t.auditIndustryAvg}:</span>
-                                                  <span className="text-white/40 font-bold">{payload[1]?.value ?? 0}%</span>
+                                {auditData.platformVisibility && auditData.platformVisibility.length > 0 ? (
+                                  <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={auditData.platformVisibility}>
+                                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                                      <XAxis 
+                                        dataKey="name" 
+                                        axisLine={false} 
+                                        tickLine={false} 
+                                        tick={{ fill: 'var(--text-secondary)', fontSize: 12, fontWeight: 600 }}
+                                        dy={10}
+                                      />
+                                      <YAxis hide />
+                                      <Tooltip 
+                                        cursor={{ fill: 'var(--bg-secondary)' }}
+                                        content={({ active, payload }) => {
+                                          if (active && payload && payload.length) {
+                                            return (
+                                              <div className="bg-surface border border-border p-4 rounded-md shadow-soft backdrop-blur-md">
+                                                <div className="text-sm font-bold mb-2 text-text">{payload[0]?.payload?.name || ''}</div>
+                                                <div className="space-y-1">
+                                                  <div className="text-xs flex justify-between gap-8">
+                                                    <span className="text-text-secondary font-bold">{t.auditVisibilityScore}:</span>
+                                                    <span className="text-primary font-bold">{payload[0]?.value ?? 0}%</span>
+                                                  </div>
+                                                  <div className="text-xs flex justify-between gap-8">
+                                                    <span className="text-text-secondary font-bold">{t.auditIndustryAvg}:</span>
+                                                    <span className="text-text-muted font-bold">{payload[1]?.value ?? 0}%</span>
+                                                  </div>
                                                 </div>
                                               </div>
-                                            </div>
-                                          );
-                                        }
-                                        return null;
-                                      }}
-                                    />
-                                    <Bar dataKey="score" radius={[6, 6, 0, 0]} barSize={40}>
-                                      {(auditData.platformVisibility || []).map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={index % 2 === 0 ? '#10b981' : '#06b6d4'} fillOpacity={0.8} />
-                                      ))}
-                                    </Bar>
-                                    <Bar dataKey="avg" fill="#ffffff10" radius={[6, 6, 0, 0]} barSize={40} />
-                                  </BarChart>
-                                </ResponsiveContainer>
+                                            );
+                                          }
+                                          return null;
+                                        }}
+                                      />
+                                      <Bar dataKey="score" radius={[6, 6, 0, 0]} barSize={40}>
+                                        {auditData.platformVisibility.map((entry, index) => (
+                                          <Cell key={`cell-${index}`} fill={index % 2 === 0 ? 'var(--primary)' : 'var(--info)'} fillOpacity={0.8} />
+                                        ))}
+                                      </Bar>
+                                      <Bar dataKey="avg" fill="var(--bg-secondary)" radius={[6, 6, 0, 0]} barSize={40} />
+                                    </BarChart>
+                                  </ResponsiveContainer>
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center border border-border rounded-md">
+                                    <span className="text-sm text-text-muted italic">Données de visibilité non disponibles.</span>
+                                  </div>
+                                )}
                               </div>
                             </div>
 
                         {/* Market Opportunity & Gap Analysis */}
                         <div className="grid md:grid-cols-2 gap-8">
                           {/* Market Opportunity */}
-                          <div className="bg-emerald-500/5 border border-emerald-500/20 p-8 rounded-3xl relative overflow-hidden">
+                          <div className="bg-primary/5 border border-primary/20 p-8 rounded-md relative overflow-hidden">
                             <div className="absolute top-0 right-0 p-4 opacity-10">
-                              <TrendingUp className="w-32 h-32 text-emerald-400" />
+                              <TrendingUp className="w-32 h-32 text-primary" />
                             </div>
-                            <h4 className="text-xl font-bold mb-6 flex items-center gap-3 text-emerald-400">
+                            <h4 className="text-xl font-bold mb-6 flex items-center gap-3 text-primary">
                               <Zap className="w-6 h-6" />
-                              Opportunité de Marché
+                              Potentiel de Croissance
                             </h4>
                             <div className="space-y-6 relative z-10">
                               <div className="grid grid-cols-2 gap-4">
-                                <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
-                                  <div className="text-xs text-white/40 uppercase tracking-widest mb-1">Trafic Potentiel</div>
-                                  <div className="text-2xl font-black text-white">+{((auditData.scores?.visibility || 0) * 1.5).toFixed(0)}%</div>
+                                <div className="p-4 rounded-md bg-surface border border-border">
+                                  <div className="text-xs text-text-muted uppercase tracking-widest mb-1">Trafic Estimé</div>
+                                  <div className="text-2xl font-black text-text">+{((auditData.scores?.visibility || 0) * 1.5).toFixed(0)}%</div>
                                 </div>
-                                <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
-                                  <div className="text-xs text-white/40 uppercase tracking-widest mb-1">Conversion IA</div>
-                                  <div className="text-2xl font-black text-white">+{((auditData.scores?.authority || 0) * 0.8).toFixed(1)}%</div>
+                                <div className="p-4 rounded-md bg-surface border border-border">
+                                  <div className="text-xs text-text-muted uppercase tracking-widest mb-1">Recommandation IA</div>
+                                  <div className="text-2xl font-black text-text">+{((auditData.scores?.authority || 0) * 0.8).toFixed(1)}%</div>
                                 </div>
                               </div>
-                              <p className="text-sm text-white/70 leading-relaxed font-bold">
-                                En optimisant votre autorité sémantique sur les 25 termes identifiés, vous pouvez capturer une part dominante des recommandations IA dans votre secteur.
+                              <p className="text-sm text-text-secondary leading-relaxed font-bold">
+                                En déployant notre stratégie de 50 contenus, vous pouvez monopoliser les recommandations de Google et des IA sur votre zone géographique.
                               </p>
-                              <div className="flex items-center gap-3 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-                                <AlertCircle className="w-5 h-5 text-emerald-400 shrink-0" />
-                                <span className="text-xs text-emerald-400 font-black uppercase tracking-widest">Action Prioritaire : Optimisation Sémantique</span>
+                              <div className="flex items-center gap-3 p-3 rounded-md bg-primary/10 border border-primary/20">
+                                <AlertCircle className="w-5 h-5 text-primary shrink-0" />
+                                <span className="text-xs text-primary font-black uppercase tracking-widest">Action Requise : Déploiement Massif</span>
                               </div>
                             </div>
                           </div>
 
                           {/* Competitor Gap Analysis */}
-                          <div className="bg-black/40 border border-white/10 p-8 rounded-3xl">
+                          <div className="card p-8">
                             <h4 className="text-xl font-bold mb-8 flex items-center gap-3">
-                              <BarChart3 className="w-6 h-6 text-cyan-400" />
+                              <BarChart3 className="w-6 h-6 text-info" />
                               {t.auditCompetitorGap}
                             </h4>
                             <div className="space-y-6">
-                              {auditData.aiCompetitors?.map((comp, i) => (
-                                <div key={i} className="space-y-2">
-                                  <div className="flex justify-between items-center">
-                                    <span className="text-sm font-bold text-white">{comp.name}</span>
-                                    <span className="text-sm font-black text-cyan-400">
-                                      {typeof comp.visibility === 'number' ? `${comp.visibility}%` : comp.visibility}
-                                    </span>
+                              {auditData.aiCompetitors && auditData.aiCompetitors.length > 0 ? (
+                                auditData.aiCompetitors.map((comp, i) => (
+                                  <div key={i} className="space-y-2">
+                                    <div className="flex justify-between items-center">
+                                      <span className="text-sm font-bold text-text">{comp.name}</span>
+                                      <span className="text-sm font-black text-info">
+                                        {typeof comp.visibility === 'number' ? `${comp.visibility}%` : comp.visibility}
+                                      </span>
+                                    </div>
+                                    <div className="h-2 bg-bg-secondary rounded-full overflow-hidden">
+                                      <motion.div 
+                                        initial={{ width: 0 }}
+                                        animate={{ width: `${typeof comp.visibility === 'number' ? comp.visibility : 0}%` }}
+                                        transition={{ duration: 1, delay: i * 0.1 }}
+                                        className="h-full bg-gradient-to-r from-info to-info/80"
+                                      />
+                                    </div>
+                                    {comp.context && (
+                                      <p className="text-[10px] text-text-muted italic leading-relaxed">
+                                        {comp.context}
+                                      </p>
+                                    )}
                                   </div>
-                                  <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-                                    <motion.div 
-                                      initial={{ width: 0 }}
-                                      animate={{ width: `${typeof comp.visibility === 'number' ? comp.visibility : 0}%` }}
-                                      transition={{ duration: 1, delay: i * 0.1 }}
-                                      className="h-full bg-gradient-to-r from-cyan-500 to-cyan-400"
-                                    />
-                                  </div>
-                                  {comp.context && (
-                                    <p className="text-[10px] text-white/40 italic leading-relaxed">
-                                      {comp.context}
-                                    </p>
-                                  )}
+                                ))
+                              ) : (
+                                <div className="text-sm text-text-muted italic p-4 text-center border border-border rounded-md">
+                                  Analyse concurrentielle en cours de traitement.
                                 </div>
-                              ))}
+                              )}
                             </div>
                           </div>
                         </div>
 
                             {/* Key Issues */}
                             <div className="grid md:grid-cols-2 gap-6">
-                              <div className="bg-black/40 border border-white/10 p-8 rounded-3xl">
-                                <h4 className="text-lg font-bold mb-6 flex items-center gap-2 text-rose-400">
+                              <div className="card p-8">
+                                <h4 className="text-lg font-bold mb-6 flex items-center gap-2 text-error">
                                   <AlertCircle className="w-5 h-5" />
                                   {t.auditCriticalIssues}
                                 </h4>
                                 <div className="space-y-4">
-                                  {auditData.issues.filter(i => i.severity === 'high').map((issue, i) => (
-                                    <div key={i} className="flex gap-4 p-4 rounded-2xl bg-rose-500/5 border border-rose-500/10 group hover:bg-rose-500/10 transition-colors">
-                                      <div className="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center shrink-0">
-                                        <X className="w-4 h-4 text-rose-400" />
+                                  {auditData.issues && auditData.issues.filter(i => i.severity === 'high').length > 0 ? (
+                                    auditData.issues.filter(i => i.severity === 'high').map((issue, i) => (
+                                      <div key={i} className="flex gap-4 p-4 rounded-md bg-error/5 border border-error/10 group hover:bg-error/10 transition-colors">
+                                        <div className="w-8 h-8 rounded-md bg-error/20 flex items-center justify-center shrink-0">
+                                          <X className="w-4 h-4 text-error" />
+                                        </div>
+                                        <div>
+                                          <div className="text-sm font-bold text-text mb-1">{issue.title}</div>
+                                          <div className="text-sm text-text-secondary leading-relaxed">{issue.desc}</div>
+                                        </div>
                                       </div>
-                                      <div>
-                                        <div className="text-sm font-bold text-white mb-1">{issue.title}</div>
-                                        <div className="text-sm text-white leading-relaxed">{issue.desc}</div>
-                                      </div>
+                                    ))
+                                  ) : (
+                                    <div className="text-sm text-text-muted italic p-4 text-center border border-border rounded-md">
+                                      Votre structure de base est saine. Passons à l'offensive.
                                     </div>
-                                  ))}
+                                  )}
                                 </div>
                               </div>
-                              <div className="bg-black/40 border border-white/10 p-8 rounded-3xl">
-                                <h4 className="text-lg font-bold mb-6 flex items-center gap-2 text-amber-400">
+                              <div className="card p-8">
+                                <h4 className="text-lg font-bold mb-6 flex items-center gap-2 text-warning">
                                   <Zap className="w-5 h-5" />
                                   {t.auditOpportunities}
                                 </h4>
                                 <div className="space-y-4">
-                                  {auditData.issues.filter(i => i.severity === 'medium').map((issue, i) => (
-                                    <div key={i} className="flex gap-4 p-4 rounded-2xl bg-amber-500/5 border border-amber-500/10 group hover:bg-amber-500/10 transition-colors">
-                                      <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center shrink-0">
-                                        <ArrowUpRight className="w-4 h-4 text-amber-400" />
+                                  {auditData.issues && auditData.issues.filter(i => i.severity === 'medium').length > 0 ? (
+                                    auditData.issues.filter(i => i.severity === 'medium').map((issue, i) => (
+                                      <div key={i} className="flex gap-4 p-4 rounded-md bg-warning/5 border border-warning/10 group hover:bg-warning/10 transition-colors">
+                                        <div className="w-8 h-8 rounded-md bg-warning/20 flex items-center justify-center shrink-0">
+                                          <ArrowUpRight className="w-4 h-4 text-warning" />
+                                        </div>
+                                        <div>
+                                          <div className="text-sm font-bold text-text mb-1">{issue.title}</div>
+                                          <div className="text-sm text-text-secondary leading-relaxed">{issue.desc}</div>
+                                        </div>
                                       </div>
-                                      <div>
-                                        <div className="text-sm font-bold text-white mb-1">{issue.title}</div>
-                                        <div className="text-sm text-white leading-relaxed">{issue.desc}</div>
-                                      </div>
+                                    ))
+                                  ) : (
+                                    <div className="text-sm text-text-muted italic p-4 text-center border border-border rounded-md">
+                                      Analyse des opportunités en cours.
                                     </div>
-                                  ))}
+                                  )}
                                 </div>
                               </div>
                             </div>
 
                             {/* Strategic Roadmap */}
-                            <div className="bg-gradient-to-br from-emerald-500/10 to-cyan-500/10 border border-white/10 p-8 rounded-3xl">
+                            <div className="bg-gradient-to-br from-info/20 to-primary/10 border border-border p-8 rounded-md">
                               <h4 className="text-xl font-bold mb-8 flex items-center gap-3">
-                                <Rocket className="w-6 h-6 text-emerald-400" />
-                                Feuille de Route Stratégique (90 Jours)
+                                <Rocket className="w-6 h-6 text-success" />
+                                {t.auditActionPlan}
                               </h4>
                               <div className="grid sm:grid-cols-3 gap-6">
                                 {[
-                                  { phase: "Jours 1-30", title: "Fondations Sémantiques", desc: "Optimisation de l'autorité sur les 25 termes clés et correction des erreurs techniques critiques.", icon: ShieldCheck, color: "text-emerald-400" },
-                                  { phase: "Jours 31-60", title: "Expansion de Visibilité", desc: "Mise en place de la stratégie de contenu pour surpasser les concurrents identifiés.", icon: TrendingUp, color: "text-cyan-400" },
-                                  { phase: "Jours 61-90", title: "Dominance IA", desc: "Renforcement de la présence sur les plateformes LLM via des citations et du netlinking qualitatif.", icon: Zap, color: "text-amber-400" }
+                                  { phase: t.auditPhase1, title: t.auditPhase1Title, desc: t.auditPhase1Desc, icon: ShieldCheck, color: "text-success" },
+                                  { phase: t.auditPhase2, title: t.auditPhase2Title, desc: t.auditPhase2Desc, icon: TrendingUp, color: "text-info" },
+                                  { phase: t.auditPhase3, title: t.auditPhase3Title, desc: t.auditPhase3Desc, icon: Zap, color: "text-warning" }
                                 ].map((step, i) => (
-                                  <div key={i} className="p-6 rounded-2xl bg-white/5 border border-white/10 relative group hover:border-white/20 transition-all">
-                                    <div className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">{step.phase}</div>
-                                    <div className={`w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center ${step.color} mb-4 group-hover:scale-110 transition-transform`}>
+                                  <div key={i} className="p-6 rounded-md bg-surface border border-border relative group hover:border-primary/20 transition-all">
+                                    <div className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted mb-2">{step.phase}</div>
+                                    <div className={`w-10 h-10 rounded-md bg-bg-secondary flex items-center justify-center ${step.color} mb-4 group-hover:scale-110 transition-transform`}>
                                       <step.icon className="w-5 h-5" />
                                     </div>
-                                    <div className="text-base font-bold text-white mb-2">{step.title}</div>
-                                    <p className="text-xs text-white/60 leading-relaxed">{step.desc}</p>
+                                    <div className="text-base font-bold text-text mb-2">{step.title}</div>
+                                    <p className="text-xs text-text-secondary leading-relaxed">{step.desc}</p>
                                   </div>
                                 ))}
                               </div>
@@ -2811,93 +2981,105 @@ function AppContent() {
                           {/* Sidebar Stats */}
                           <div className="space-y-8">
                             {/* AI Perception */}
-                            <div className="bg-black/40 border border-white/10 p-8 rounded-3xl">
+                            <div className="card p-8">
                               <h4 className="text-lg font-bold mb-6 flex items-center gap-2">
-                                <Brain className="w-5 h-5 text-purple-400" />
+                                <Brain className="w-5 h-5 text-primary" />
                                 {t.auditAiBrandPerception}
                               </h4>
                               <div className="space-y-6">
-                                {auditData.perceptions.map((p, i) => (
-                                  <div key={i} className="space-y-2">
-                                    <div className="flex justify-between text-sm font-bold uppercase tracking-widest">
-                                      <span className="text-white opacity-80">{p.label}</span>
-                                      <span className="text-white">{p.value}%</span>
+                                {auditData.perceptions && auditData.perceptions.length > 0 ? (
+                                  auditData.perceptions.map((p, i) => (
+                                    <div key={i} className="space-y-2">
+                                      <div className="flex justify-between text-sm font-bold uppercase tracking-widest">
+                                        <span className="text-text-secondary">{p.label}</span>
+                                        <span className="text-text">{p.value}%</span>
+                                      </div>
+                                      <div className="h-2 bg-bg-secondary rounded-full overflow-hidden">
+                                        <motion.div 
+                                          initial={{ width: 0 }}
+                                          animate={{ width: `${p.value}%` }}
+                                          transition={{ duration: 1, delay: i * 0.1 }}
+                                          className="h-full bg-gradient-to-r from-primary to-info"
+                                        />
+                                      </div>
                                     </div>
-                                    <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-                                      <motion.div 
-                                        initial={{ width: 0 }}
-                                        animate={{ width: `${p.value}%` }}
-                                        transition={{ duration: 1, delay: i * 0.1 }}
-                                        className="h-full bg-gradient-to-r from-purple-500 to-emerald-500"
-                                      />
-                                    </div>
+                                  ))
+                                ) : (
+                                  <div className="text-sm text-text-muted italic p-4 text-center border border-border rounded-md">
+                                    Données de perception non disponibles.
                                   </div>
-                                ))}
+                                )}
                               </div>
 
                               {/* Detailed Brand Perception */}
                               {auditData.brandPerceptionDetails && (
-                                <div className="mt-8 pt-8 border-t border-white/10 space-y-6">
+                                <div className="mt-8 pt-8 border-t border-border space-y-6">
                                   <div className="grid grid-cols-3 gap-2">
                                     <div className="text-center">
-                                      <div className="text-lg font-black text-emerald-400">{auditData.brandPerceptionDetails.sentiment.positive}%</div>
-                                      <div className="text-[8px] uppercase tracking-widest text-white/40 font-bold">{t.auditSentimentPositive}</div>
+                                      <div className="text-lg font-black text-success">{auditData.brandPerceptionDetails.sentiment?.positive || 0}%</div>
+                                      <div className="text-[8px] uppercase tracking-widest text-text-muted font-bold">{t.auditSentimentPositive}</div>
                                     </div>
                                     <div className="text-center">
-                                      <div className="text-lg font-black text-white/60">{auditData.brandPerceptionDetails.sentiment.neutral}%</div>
-                                      <div className="text-[8px] uppercase tracking-widest text-white/40 font-bold">{t.auditSentimentNeutral}</div>
+                                      <div className="text-lg font-black text-text-secondary">{auditData.brandPerceptionDetails.sentiment?.neutral || 0}%</div>
+                                      <div className="text-[8px] uppercase tracking-widest text-text-muted font-bold">{t.auditSentimentNeutral}</div>
                                     </div>
                                     <div className="text-center">
-                                      <div className="text-lg font-black text-rose-400">{auditData.brandPerceptionDetails.sentiment.negative}%</div>
-                                      <div className="text-[8px] uppercase tracking-widest text-white/40 font-bold">{t.auditSentimentNegative}</div>
+                                      <div className="text-lg font-black text-error">{auditData.brandPerceptionDetails.sentiment?.negative || 0}%</div>
+                                      <div className="text-[8px] uppercase tracking-widest text-text-muted font-bold">{t.auditSentimentNegative}</div>
                                     </div>
                                   </div>
                                   
                                   <div className="space-y-2">
-                                    <div className="text-xs font-bold text-white uppercase tracking-widest opacity-60">{t.auditTopAttributes}</div>
+                                    <div className="text-xs font-bold text-text uppercase tracking-widest opacity-60">{t.auditTopAttributes}</div>
                                     <div className="flex flex-wrap gap-2">
-                                      {auditData.brandPerceptionDetails.topAttributes.map((attr: any, i: number) => (
-                                        <span key={i} className="px-2 py-1 rounded-lg bg-white/5 border border-white/10 text-[10px] font-bold text-white flex items-center gap-1">
+                                      {auditData.brandPerceptionDetails.topAttributes?.map((attr: any, i: number) => (
+                                        <span key={i} className="px-2 py-1 rounded-md bg-bg-secondary border border-border text-[10px] font-bold text-text flex items-center gap-1">
                                           {typeof attr === 'string' ? attr : attr.label}
                                           {typeof attr !== 'string' && attr.score && (
-                                            <span className="text-emerald-400 opacity-60">{attr.score}%</span>
+                                            <span className="text-success opacity-60">{attr.score}%</span>
                                           )}
                                         </span>
                                       ))}
                                     </div>
                                   </div>
 
-                                  <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
-                                    <div className="text-xs font-bold text-white uppercase tracking-widest opacity-60 mb-2">{t.auditUserFeedback}</div>
-                                    <p className="text-xs text-white/80 leading-relaxed italic">"{auditData.brandPerceptionDetails.userFeedbackSummary}"</p>
+                                  <div className="p-4 rounded-md bg-bg-secondary border border-border">
+                                    <div className="text-xs font-bold text-text uppercase tracking-widest opacity-60 mb-2">{t.auditUserFeedback}</div>
+                                    <p className="text-xs text-text-secondary leading-relaxed italic">"{auditData.brandPerceptionDetails.userFeedbackSummary || 'Aucun résumé disponible.'}"</p>
                                   </div>
                                 </div>
                               )}
                             </div>
 
                             {/* Strategic Recommendations */}
-                            <div className="bg-emerald-500/5 border border-emerald-500/20 p-8 rounded-3xl relative overflow-hidden group">
+                            <div className="bg-success/5 border border-success/20 p-8 rounded-md relative overflow-hidden group">
                               <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
-                                <Target className="w-24 h-24 text-emerald-500" />
+                                <Target className="w-24 h-24 text-success" />
                               </div>
                               <div className="relative z-10">
-                                <h4 className="text-lg font-bold mb-6 flex items-center gap-2 text-emerald-400">
+                                <h4 className="text-lg font-bold mb-6 flex items-center gap-2 text-success">
                                   <Rocket className="w-5 h-5" />
                                   Strategic Roadmap
                                 </h4>
                                 <div className="space-y-6">
-                                  {auditData.recommendations.map((rec, i) => (
-                                    <div key={i} className="flex gap-4">
-                                      <div className="w-6 h-6 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0 text-xs font-black text-emerald-400 border border-emerald-500/30">
-                                        {i + 1}
+                                  {auditData.recommendations && auditData.recommendations.length > 0 ? (
+                                    auditData.recommendations.map((rec, i) => (
+                                      <div key={i} className="flex gap-4">
+                                        <div className="w-6 h-6 rounded-full bg-success/20 flex items-center justify-center shrink-0 text-xs font-black text-success border border-success/30">
+                                          {i + 1}
+                                        </div>
+                                        <div className="text-base text-text font-medium leading-relaxed opacity-90">{rec}</div>
                                       </div>
-                                      <div className="text-base text-white font-medium leading-relaxed opacity-90">{rec}</div>
+                                    ))
+                                  ) : (
+                                    <div className="text-sm text-text-muted italic p-4 text-center border border-border rounded-md">
+                                      Recommandations non disponibles.
                                     </div>
-                                  ))}
+                                  )}
                                 </div>
                                 <button 
                                   onClick={() => setView('conversion')}
-                                  className="w-full mt-8 py-4 bg-emerald-500 text-black rounded-2xl font-bold hover:bg-emerald-400 transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+                                  className="btn-primary w-full mt-8 py-4 flex items-center justify-center gap-2"
                                 >
                                   Deploy Strategy
                                   <ArrowRight className="w-4 h-4" />
@@ -2922,34 +3104,34 @@ function AppContent() {
             transition={{ duration: 0.8, delay: 0.2 }}
             className="mt-20 sm:mt-32 relative group"
           >
-            <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-[2.5rem] blur opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"></div>
-            <div className="relative bg-[#0a0a0a] border border-white/10 rounded-[2.5rem] overflow-hidden shadow-2xl">
-              <div className="bg-zinc-900/50 border-b border-white/5 p-4 flex items-center gap-2 relative z-20">
+            <div className="absolute -inset-1 bg-gradient-main rounded-md blur opacity-10 group-hover:opacity-20 transition duration-1000 group-hover:duration-200"></div>
+            <div className="relative bg-surface border border-border rounded-md overflow-hidden shadow-soft">
+              <div className="bg-bg-secondary border-b border-border p-4 flex items-center gap-2 relative z-20">
                 <div className="flex gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-red-500/20" />
-                  <div className="w-3 h-3 rounded-full bg-yellow-500/20" />
-                  <div className="w-3 h-3 rounded-full bg-green-500/20" />
+                  <div className="w-3 h-3 rounded-full bg-error/20" />
+                  <div className="w-3 h-3 rounded-full bg-warning/20" />
+                  <div className="w-3 h-3 rounded-full bg-success/20" />
                 </div>
-                <div className="h-4 w-48 bg-white/5 rounded mx-auto" />
+                <div className="h-4 w-48 bg-bg-primary rounded mx-auto" />
               </div>
               
               <AnimatedDashboard lang={lang} />
               
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent pointer-events-none z-20" />
+              <div className="absolute inset-0 bg-gradient-to-t from-bg-primary via-transparent to-transparent pointer-events-none z-20" />
               
               {/* Floating UI Elements */}
               <motion.div 
                 animate={{ y: [0, -10, 0] }}
                 transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                className="absolute top-1/4 -left-8 p-4 rounded-2xl bg-zinc-900 border border-emerald-500/30 shadow-xl hidden lg:block"
+                className="absolute top-1/4 -left-8 p-4 rounded-md bg-surface border border-success/30 shadow-soft hidden lg:block"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center">
-                    <TrendingUp className="w-4 h-4 text-emerald-400" />
+                  <div className="w-8 h-8 rounded-md bg-success/20 flex items-center justify-center">
+                    <TrendingUp className="w-4 h-4 text-success" />
                   </div>
                   <div>
-                    <div className="text-sm text-white uppercase font-bold">Growth</div>
-                    <div className="text-sm font-bold text-white">+145%</div>
+                    <div className="text-sm text-text uppercase font-bold">Growth</div>
+                    <div className="text-sm font-bold text-text">+145%</div>
                   </div>
                 </div>
               </motion.div>
@@ -2957,15 +3139,15 @@ function AppContent() {
               <motion.div 
                 animate={{ y: [0, 10, 0] }}
                 transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-                className="absolute bottom-1/4 -right-8 p-4 rounded-2xl bg-zinc-900 border border-cyan-500/30 shadow-xl hidden lg:block"
+                className="absolute bottom-1/4 -right-8 p-4 rounded-md bg-surface border border-info/30 shadow-soft hidden lg:block"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-cyan-500/20 flex items-center justify-center">
-                    <CheckCircle2 className="w-4 h-4 text-cyan-400" />
+                  <div className="w-8 h-8 rounded-md bg-info/20 flex items-center justify-center">
+                    <CheckCircle2 className="w-4 h-4 text-info" />
                   </div>
                   <div>
-                    <div className="text-sm text-white uppercase font-bold">Indexé</div>
-                    <div className="text-sm font-bold text-white">Instantané</div>
+                    <div className="text-sm text-text uppercase font-bold">Indexé</div>
+                    <div className="text-sm font-bold text-text">Instantané</div>
                   </div>
                 </div>
               </motion.div>
@@ -2977,10 +3159,10 @@ function AppContent() {
         {auditStep === 'idle' && (
           <div className="mt-20 sm:mt-32 grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-8">
             {[
-              { label: t.statSitesIndexed, value: 47, suffix: '+' },
-              { label: t.statLeadsGenerated, value: 312, suffix: '+' },
-              { label: t.statAvgRoi, value: 180, suffix: '%' },
-              { label: t.statCitiesCovered, value: 12, suffix: '+' }
+              { label: t.statSitesIndexed, value: 12400, suffix: '+' },
+              { label: t.statLeadsGenerated, value: 850, suffix: 'k' },
+              { label: t.statAvgRoi, value: 320, suffix: '%' },
+              { label: t.statCitiesCovered, value: 450, suffix: '+' }
             ].map((stat, i) => (
               <motion.div 
                 key={i}
@@ -2988,12 +3170,12 @@ function AppContent() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: i * 0.1 }}
-                className="text-center p-6 rounded-3xl bg-white/5 border border-white/10"
+                className="text-center p-6 rounded-md bg-surface border border-border shadow-soft"
               >
-                <div className="text-2xl sm:text-4xl font-bold text-emerald-400 mb-1">
+                <div className="text-2xl sm:text-4xl font-bold text-primary mb-1">
                   <Counter value={stat.value} suffix={stat.suffix} />
                 </div>
-                <div className="text-sm sm:text-base font-bold text-white uppercase tracking-widest opacity-80">{stat.label}</div>
+                <div className="text-sm sm:text-base font-bold text-text uppercase tracking-widest opacity-80">{stat.label}</div>
               </motion.div>
             ))}
           </div>
@@ -3011,59 +3193,59 @@ function AppContent() {
                   >
                     {/* PROGRESS BAR PHASES */}
                     <div className="flex justify-between items-center mb-12 px-4 relative">
-                      <div className="absolute top-1/2 left-0 w-full h-px bg-white/10 -z-10" />
+                      <div className="absolute top-1/2 left-0 w-full h-px bg-border -z-10" />
                       {[1, 2, 3, 4, 5, 6].map((p) => (
                         <div key={p} className="flex flex-col items-center gap-2">
                           <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-sm border-2 transition-all duration-500 ${
-                            p === 1 ? 'bg-emerald-500 border-emerald-400 text-black shadow-[0_0_20px_rgba(16,185,129,0.5)]' : 
-                            p <= 3 ? 'bg-zinc-900 border-emerald-500/50 text-emerald-400' :
-                            'bg-zinc-900 border-white/10 text-white/30'
+                            p === 1 ? 'bg-primary border-primary text-white shadow-soft' : 
+                            p <= 3 ? 'bg-surface border-primary/50 text-primary' :
+                            'bg-surface border-border text-text-muted'
                           }`}>
                             {p}
                           </div>
-                          <span className="text-[8px] font-black uppercase tracking-widest text-white/40">Phase {p}</span>
+                          <span className="text-[8px] font-black uppercase tracking-widest text-text-muted">Phase {p}</span>
                         </div>
                       ))}
                     </div>
 
                     {/* Header with Score */}
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-black/40 p-8 rounded-[2rem] border border-white/5 backdrop-blur-xl relative overflow-hidden group">
-                      <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 card p-8 backdrop-blur-xl relative overflow-hidden group">
+                      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
                       <div className="relative z-10 flex flex-col sm:flex-row items-center gap-8">
                         <div className="relative w-32 h-32 flex items-center justify-center">
-                          <svg className="w-full h-full transform -rotate-90 drop-shadow-[0_0_15px_rgba(16,185,129,0.4)]" viewBox="0 0 24 24">
-                            <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="8" />
+                          <svg className="w-full h-full transform -rotate-90 drop-shadow-[0_0_15px_rgba(59,130,246,0.4)]" viewBox="0 0 100 100">
+                            <circle cx="50" cy="50" r="45" fill="none" stroke="var(--bg-secondary)" strokeWidth="8" />
                             <circle 
-                              cx="50" cy="50" r="45" fill="none" stroke="#10b981" strokeWidth="8" 
+                              cx="50" cy="50" r="45" fill="none" stroke="var(--primary)" strokeWidth="8" 
                               strokeDasharray={`${(auditData.seoScore || 0) * 2.827} 282.7`} 
                               className="transition-all duration-1000 ease-out" 
                               strokeLinecap="round" 
                             />
                           </svg>
                           <div className="absolute inset-0 flex flex-col items-center justify-center">
-                            <span className="text-4xl font-black text-white tracking-tighter">{auditData.seoScore || 0}</span>
-                            <span className="text-xs text-emerald-400 font-bold uppercase tracking-widest">Score SEO</span>
+                            <span className="text-4xl font-black text-text tracking-tighter">{auditData.seoScore || 0}</span>
+                            <span className="text-xs text-primary font-bold uppercase tracking-widest">Score SEO</span>
                           </div>
                         </div>
                         <div className="text-center sm:text-left">
-                          <h3 className="text-3xl sm:text-4xl font-black text-white tracking-tight mb-2">
+                          <h3 className="text-3xl sm:text-4xl font-black text-text tracking-tight mb-2">
                             {auditData.companyName || "Votre Entreprise"}
                           </h3>
                           <div className="flex flex-wrap justify-center sm:justify-start gap-3">
-                            <span className="px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-emerald-400 text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+                            <span className="px-3 py-1 bg-primary/10 border border-primary/20 rounded-full text-primary text-xs font-bold uppercase tracking-widest flex items-center gap-2">
                               <MapPin className="w-3 h-3" /> {auditData.extractedLocation || "Local"}
                             </span>
-                            <span className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-white/70 text-xs font-bold uppercase tracking-widest">
+                            <span className="px-3 py-1 bg-bg-secondary border border-border rounded-full text-text-secondary text-xs font-bold uppercase tracking-widest">
                               {auditData.industry || "Audit IA Généré"}
                             </span>
                             <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest border ${
-                              auditData.riskLevel === 'critical' ? 'bg-red-500/20 border-red-500/30 text-red-400' :
-                              auditData.riskLevel === 'high' ? 'bg-orange-500/20 border-orange-500/30 text-orange-400' :
-                              'bg-yellow-500/20 border-yellow-500/30 text-yellow-400'
+                              auditData.riskLevel === 'critical' ? 'bg-error/20 border-error/30 text-error' :
+                              auditData.riskLevel === 'high' ? 'bg-warning/20 border-warning/30 text-warning' :
+                              'bg-warning/10 border-warning/20 text-warning'
                             }`}>
                               Risque : {auditData.riskLevel || 'Élevé'}
                             </span>
-                            <span className="px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-emerald-400 text-[10px] font-bold uppercase tracking-widest flex items-center gap-2">
+                            <span className="px-3 py-1 bg-success/10 border border-success/20 rounded-full text-success text-[10px] font-bold uppercase tracking-widest flex items-center gap-2">
                               <Shield className="w-3 h-3" /> Données Vérifiées
                             </span>
                           </div>
@@ -3071,7 +3253,7 @@ function AppContent() {
                       </div>
                       <button 
                         onClick={() => setAuditStep('idle')}
-                        className="relative z-10 px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-white text-sm font-bold transition-all flex items-center gap-2 group/btn"
+                        className="btn-secondary px-6 py-3 flex items-center gap-2 group/btn"
                       >
                         <X className="w-4 h-4 group-hover/btn:rotate-90 transition-transform" />
                         Nouvelle Analyse
@@ -3079,141 +3261,159 @@ function AppContent() {
                     </div>
 
                     {/* PHASE 1: HOOK */}
-                    <div className="bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 p-6 sm:p-10 rounded-[2rem] border border-emerald-500/30 shadow-[0_0_50px_-10px_rgba(16,185,129,0.3)] relative overflow-hidden group">
+                    <div className="bg-gradient-to-br from-primary/20 to-info/20 p-6 sm:p-10 rounded-md border border-primary/30 shadow-soft relative overflow-hidden group">
                       <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform duration-700">
-                        <Zap className="w-24 h-24 sm:w-32 sm:h-32 text-emerald-400" />
+                        <Zap className="w-24 h-24 sm:w-32 sm:h-32 text-primary" />
                       </div>
                       <div className="relative z-10">
-                        <span className="px-3 py-1 bg-emerald-500/20 rounded-full text-emerald-400 text-[10px] font-black uppercase tracking-[0.2em] mb-4 inline-block border border-emerald-500/30">
+                        <span className="px-3 py-1 bg-primary/20 rounded-full text-primary text-[10px] font-black uppercase tracking-[0.2em] mb-4 inline-block border border-primary/30">
                           Phase 1 : Impact Immédiat
                         </span>
-                        <h4 className="text-xl sm:text-3xl md:text-4xl font-black text-white leading-tight max-w-4xl break-words">
-                          "{auditData.hook}"
+                        <h4 className="text-xl sm:text-3xl md:text-4xl font-black text-text leading-tight max-w-4xl break-words">
+                          "{auditData.hook || 'Votre visibilité sur les moteurs de recherche IA est critique.'}"
                         </h4>
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                       {/* PHASE 2: PREUVE IMMÉDIATE */}
-                      <div className="bg-black/40 p-8 rounded-[2rem] border border-white/5 backdrop-blur-xl relative overflow-hidden group">
+                      <div className="card p-8 backdrop-blur-xl relative overflow-hidden group">
                         <div className="flex items-center gap-3 mb-8">
-                          <div className="w-10 h-10 rounded-2xl bg-red-500/10 flex items-center justify-center border border-red-500/20">
-                            <Target className="w-5 h-5 text-red-400" />
+                          <div className="w-10 h-10 rounded-md bg-error/10 flex items-center justify-center border border-error/20">
+                            <Target className="w-5 h-5 text-error" />
                           </div>
                           <div>
-                            <h4 className="text-xl font-black text-white tracking-tight">Preuve Immédiate</h4>
-                            <p className="text-xs text-white/50 font-bold uppercase tracking-widest">Phase 2 : Comparaison Concurrents</p>
+                            <h4 className="text-xl font-black text-text tracking-tight">Preuve Immédiate</h4>
+                            <p className="text-xs text-text-muted font-bold uppercase tracking-widest">Phase 2 : Comparaison Concurrents</p>
                           </div>
                         </div>
                         
                         <div className="space-y-4 mb-8">
-                          {auditData.competitorComparison?.map((comp, i) => (
-                            <div key={i} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5 group/row hover:bg-white/10 transition-all">
-                              <div className="flex items-center gap-4">
-                                <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-xs font-black text-white">
-                                  {i + 1}
-                                </div>
-                                <div>
-                                  <div className="font-bold text-white">{comp.name}</div>
-                                  <div className="text-[10px] text-white/40 font-black uppercase tracking-widest">
-                                    {comp.maps ? "Présent sur Google Maps" : "Absent de Google Maps"}
+                          {auditData.competitorComparison && auditData.competitorComparison.length > 0 ? (
+                            auditData.competitorComparison.map((comp, i) => (
+                              <div key={i} className="flex items-center justify-between p-4 bg-bg-secondary rounded-md border border-border group/row hover:bg-bg-primary transition-all">
+                                <div className="flex items-center gap-4">
+                                  <div className="w-8 h-8 rounded-full bg-bg-primary flex items-center justify-center text-xs font-black text-text">
+                                    {i + 1}
+                                  </div>
+                                  <div>
+                                    <div className="font-bold text-text">{comp.name}</div>
+                                    <div className="text-[10px] text-text-muted font-black uppercase tracking-widest">
+                                      {comp.maps ? "Présent sur Google Maps" : "Absent de Google Maps"}
+                                    </div>
                                   </div>
                                 </div>
+                                <div className="text-right shrink-0 ml-4">
+                                  <div className="text-sm font-black text-success">{comp.visibility}</div>
+                                  <div className="text-[10px] text-text-muted font-black uppercase tracking-widest">Visibilité</div>
+                                </div>
                               </div>
-                              <div className="text-right shrink-0 ml-4">
-                                <div className="text-sm font-black text-emerald-400">{comp.visibility}</div>
-                                <div className="text-[10px] text-white/40 font-black uppercase tracking-widest">Visibilité</div>
-                              </div>
+                            ))
+                          ) : (
+                            <div className="text-sm text-text-muted italic p-4 text-center border border-border rounded-md">
+                              Comparaison concurrentielle non disponible.
                             </div>
-                          ))}
+                          )}
                         </div>
 
                         {/* AI Dominance Mini Chart */}
-                        <div className="p-6 bg-black/40 rounded-2xl border border-white/5">
-                          <div className="text-xs text-white/40 font-black uppercase tracking-widest mb-4">Dominance IA (ChatGPT/Gemini)</div>
+                        <div className="p-6 bg-bg-secondary rounded-md border border-border">
+                          <div className="text-xs text-text-muted font-black uppercase tracking-widest mb-4">Dominance IA (ChatGPT/Gemini)</div>
                           <div className="space-y-3">
-                            {auditData.aiCompetitors?.map((comp, i) => (
-                              <div key={i} className="space-y-1">
-                                <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest">
-                                  <span className="text-white/60">{comp.name}</span>
-                                  <span className="text-emerald-400">{comp.aiVisibilityScore}%</span>
+                            {auditData.aiCompetitors && auditData.aiCompetitors.length > 0 ? (
+                              auditData.aiCompetitors.map((comp, i) => (
+                                <div key={i} className="space-y-1">
+                                  <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest">
+                                    <span className="text-text-secondary">{comp.name}</span>
+                                    <span className="text-primary">{comp.aiVisibilityScore}%</span>
+                                  </div>
+                                  <div className="h-1.5 bg-bg-primary rounded-full overflow-hidden">
+                                    <motion.div 
+                                      initial={{ width: 0 }}
+                                      whileInView={{ width: `${comp.aiVisibilityScore}%` }}
+                                      className="h-full bg-gradient-main"
+                                    />
+                                  </div>
                                 </div>
-                                <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                                  <motion.div 
-                                    initial={{ width: 0 }}
-                                    whileInView={{ width: `${comp.aiVisibilityScore}%` }}
-                                    className="h-full bg-gradient-to-r from-emerald-500 to-cyan-500"
-                                  />
-                                </div>
+                              ))
+                            ) : (
+                              <div className="text-xs text-text-muted italic text-center">
+                                Données de dominance IA non disponibles.
                               </div>
-                            ))}
+                            )}
                           </div>
                         </div>
                       </div>
 
                       {/* PHASE 3: POSITIONNEMENT MOTS-CLÉS */}
-                      <div className="bg-black/40 p-8 rounded-[2rem] border border-white/5 backdrop-blur-xl relative overflow-hidden group">
+                      <div className="card p-8 backdrop-blur-xl relative overflow-hidden group">
                         <div className="flex items-center gap-3 mb-8">
-                          <div className="w-10 h-10 rounded-2xl bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
-                            <Search className="w-5 h-5 text-blue-400" />
+                          <div className="w-10 h-10 rounded-md bg-info/10 flex items-center justify-center border border-info/20">
+                            <Search className="w-5 h-5 text-info" />
                           </div>
                           <div>
-                            <h4 className="text-xl font-black text-white tracking-tight">Positionnement</h4>
-                            <p className="text-xs text-white/50 font-bold uppercase tracking-widest">Phase 2 : L'État des Lieux</p>
+                            <h4 className="text-xl font-black text-text tracking-tight">Positionnement</h4>
+                            <p className="text-xs text-text-muted font-bold uppercase tracking-widest">Phase 2 : L'État des Lieux</p>
                           </div>
                         </div>
 
                         <div className="space-y-4">
-                          {auditData.keywordRankings?.map((kw, i) => (
-                            <div key={i} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
-                              <div className="font-bold text-white">{kw.keyword}</div>
-                              <div className={`px-3 py-1 rounded-full text-xs font-black border ${
-                                typeof kw.position === 'number' && kw.position <= 3 
-                                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
-                                  : 'bg-red-500/10 text-red-400 border-red-500/20'
-                              }`}>
-                                {typeof kw.position === 'number' ? `Position #${kw.position}` : kw.position}
+                          {auditData.keywordRankings && auditData.keywordRankings.length > 0 ? (
+                            auditData.keywordRankings.map((kw, i) => (
+                              <div key={i} className="flex items-center justify-between p-4 bg-bg-secondary rounded-md border border-border">
+                                <div className="font-bold text-text">{kw.keyword}</div>
+                                <div className={`px-3 py-1 rounded-full text-xs font-black border ${
+                                  typeof kw.position === 'number' && kw.position <= 3 
+                                    ? 'bg-success/10 text-success border-success/20' 
+                                    : 'bg-error/10 text-error border-error/20'
+                                }`}>
+                                  {typeof kw.position === 'number' ? `Position #${kw.position}` : kw.position}
+                                </div>
                               </div>
+                            ))
+                          ) : (
+                            <div className="text-sm text-text-muted italic p-4 text-center border border-border rounded-md">
+                              Positionnement non disponible.
                             </div>
-                          ))}
+                          )}
                         </div>
                       </div>
                     </div>
 
                     {/* PHASE 3: PERTE FINANCIÈRE */}
-                    <div className="bg-red-500/10 p-8 rounded-[2rem] border border-red-500/20 relative overflow-hidden group shadow-[0_0_50px_-10px_rgba(239,68,68,0.3)]">
+                    <div className="bg-error/10 p-8 rounded-md border border-error/20 relative overflow-hidden group shadow-soft">
                       <div className="absolute top-0 right-0 p-8 opacity-10">
-                        <DollarSign className="w-32 h-32 text-red-400" />
+                        <DollarSign className="w-32 h-32 text-error" />
                       </div>
                       <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
-                        <div className="w-24 h-24 rounded-full bg-red-500/20 flex items-center justify-center border border-red-500/30 shrink-0 shadow-[0_0_20px_rgba(239,68,68,0.2)]">
-                          <TrendingUp className="rotate-180 w-10 h-10 text-red-400" />
+                        <div className="w-24 h-24 rounded-full bg-error/20 flex items-center justify-center border border-error/30 shrink-0 shadow-soft">
+                          <TrendingUp className="rotate-180 w-10 h-10 text-error" />
                         </div>
                         <div>
-                          <span className="px-3 py-1 bg-red-500/20 rounded-full text-red-400 text-[10px] font-black uppercase tracking-[0.2em] mb-4 inline-block border border-red-500/30">
+                          <span className="px-3 py-1 bg-error/20 rounded-full text-error text-[10px] font-black uppercase tracking-[0.2em] mb-4 inline-block border border-error/30">
                             Phase 3 : Le Coût de l'Inaction
                           </span>
-                          <h4 className="text-3xl font-black text-white mb-2">
-                            Vous perdez environ <span className="text-red-400">{auditData.estimatedLoss?.amount}</span> par mois
+                          <h4 className="text-3xl font-black text-text mb-2">
+                            Vous perdez environ <span className="text-error">{auditData.estimatedLoss?.amount || 'un montant significatif'}</span> par mois
                           </h4>
-                          <p className="text-white/70 font-medium max-w-2xl mb-6">
-                            {auditData.estimatedLoss?.description}
+                          <p className="text-text-secondary font-medium max-w-2xl mb-6">
+                            {auditData.estimatedLoss?.description || 'Votre manque de visibilité sur les moteurs de recherche IA et traditionnels vous fait perdre de nombreuses opportunités commerciales au profit de vos concurrents.'}
                           </p>
-                          <div className="flex items-center gap-4 p-4 bg-black/40 rounded-2xl border border-white/5">
+                          <div className="flex items-center gap-4 p-4 bg-bg-secondary rounded-md border border-border">
                             <div className="flex-1 space-y-2">
-                              <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-white/40">
+                              <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-text-muted">
                                 <span>Autorité Sémantique</span>
-                                <span className="text-red-400">{auditData.semanticAuthorityScore}%</span>
+                                <span className="text-error">{auditData.semanticAuthorityScore || 0}%</span>
                               </div>
-                              <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                              <div className="h-2 bg-bg-primary rounded-full overflow-hidden">
                                 <motion.div 
                                   initial={{ width: 0 }}
-                                  whileInView={{ width: `${auditData.semanticAuthorityScore}%` }}
-                                  className="h-full bg-red-500"
+                                  whileInView={{ width: `${auditData.semanticAuthorityScore || 0}%` }}
+                                  className="h-full bg-error"
                                 />
                               </div>
                             </div>
-                            <div className="text-[10px] font-black uppercase tracking-widest text-red-400 bg-red-500/10 px-3 py-1 rounded-full border border-red-500/20">
+                            <div className="text-[10px] font-black uppercase tracking-widest text-error bg-error/10 px-3 py-1 rounded-full border border-error/20">
                               Critique
                             </div>
                           </div>
@@ -3225,36 +3425,36 @@ function AppContent() {
                     {!auditUnlocked ? (
                       <div className="relative mt-12">
                         {/* Blurry Overlay for locked content */}
-                        <div className="absolute inset-x-0 top-0 h-[400px] bg-gradient-to-b from-transparent to-zinc-950 z-10 pointer-events-none" />
+                        <div className="absolute inset-x-0 top-0 h-[400px] bg-gradient-to-b from-transparent to-bg-primary z-10 pointer-events-none" />
                         
-                        <div className="relative z-20 bg-black/60 backdrop-blur-xl border border-emerald-500/30 p-8 sm:p-12 rounded-[2.5rem] text-center shadow-[0_0_100px_-20px_rgba(16,185,129,0.4)] max-w-3xl mx-auto">
-                          <div className="w-20 h-20 rounded-3xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20 mx-auto mb-8 shadow-[0_0_30px_rgba(16,185,129,0.2)]">
-                            <Lock className="w-10 h-10 text-emerald-400" />
+                        <div className="relative z-20 bg-surface/80 backdrop-blur-xl border border-primary/30 p-8 sm:p-12 rounded-md text-center shadow-soft max-w-3xl mx-auto">
+                          <div className="w-20 h-20 rounded-md bg-primary/10 flex items-center justify-center border border-primary/20 mx-auto mb-8 shadow-soft">
+                            <Lock className="w-10 h-10 text-primary" />
                           </div>
                           
-                          <h3 className="text-3xl sm:text-4xl font-black text-white mb-6 tracking-tight">
-                            Débloquez votre <span className="text-emerald-400">Plan d'Action Complet</span>
+                          <h3 className="text-3xl sm:text-4xl font-black text-text mb-6 tracking-tight">
+                            Débloquez votre <span className="text-primary">Plan d'Action Complet</span>
                           </h3>
                           
-                          <p className="text-lg text-white/70 mb-10 leading-relaxed font-medium">
-                            Nous avons identifié <span className="text-white font-bold">3 opportunités majeures</span> et préparé un <span className="text-white font-bold">plan d'action en 90 jours</span> pour votre entreprise. Entrez votre email pour recevoir l'audit complet.
+                          <p className="text-lg text-text-secondary mb-10 leading-relaxed font-medium">
+                            Nous avons identifié <span className="text-text font-bold">3 opportunités majeures</span> et préparé un <span className="text-text font-bold">plan d'action en 90 jours</span> pour votre entreprise. Entrez votre email pour recevoir l'audit complet.
                           </p>
                           
                           <div className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto">
                             <input 
                               type="email" 
                               placeholder="votre@email.com"
-                              className="flex-1 bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white focus:outline-none focus:border-emerald-500/50 transition-all font-medium"
+                              className="input flex-1"
                             />
                             <button 
                               onClick={() => setAuditUnlocked(true)}
-                              className="bg-emerald-500 text-black px-8 py-4 rounded-2xl font-black hover:bg-emerald-400 transition-all shadow-[0_0_30px_rgba(16,185,129,0.4)] hover:scale-105 active:scale-95"
+                              className="btn-primary"
                             >
                               DÉBLOQUER
                             </button>
                           </div>
                           
-                          <p className="mt-6 text-xs text-white/40 font-bold uppercase tracking-widest">
+                          <p className="mt-6 text-xs text-text-muted font-bold uppercase tracking-widest">
                             Gratuit • Sans engagement • Analyse IA incluse
                           </p>
                         </div>
@@ -3266,87 +3466,93 @@ function AppContent() {
                         className="space-y-12"
                       >
                         {/* PHASE 5: OPPORTUNITÉS */}
-                        <div className="bg-black/40 p-8 rounded-[2rem] border border-white/5 backdrop-blur-xl relative overflow-hidden group">
+                        <div className="card p-8 backdrop-blur-xl relative overflow-hidden group">
                           <div className="flex items-center gap-3 mb-8">
-                            <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
-                              <Sparkles className="w-5 h-5 text-emerald-400" />
+                            <div className="w-10 h-10 rounded-md bg-success/10 flex items-center justify-center border border-success/20">
+                              <Sparkles className="w-5 h-5 text-success" />
                             </div>
                             <div>
-                              <h4 className="text-xl font-black text-white tracking-tight">Opportunités</h4>
-                              <p className="text-xs text-white/50 font-bold uppercase tracking-widest">Phase 5 : Le Potentiel Caché</p>
+                              <h4 className="text-xl font-black text-text tracking-tight">Opportunités</h4>
+                              <p className="text-xs text-text-muted font-bold uppercase tracking-widest">Phase 5 : Le Potentiel Caché</p>
                             </div>
                           </div>
                           
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            {auditData.opportunities?.map((opp, i) => (
-                              <div key={i} className="p-6 bg-white/5 rounded-2xl border border-white/5 hover:border-emerald-500/30 transition-all group/card">
-                                <div className="text-emerald-400 font-black mb-2">#{i + 1}</div>
-                                <div className="font-bold text-white mb-2">{opp.title}</div>
-                                <p className="text-sm text-white/60 leading-relaxed">{opp.description}</p>
+                            {auditData.opportunities && auditData.opportunities.length > 0 ? (
+                              auditData.opportunities.map((opp, i) => (
+                                <div key={i} className="p-6 bg-bg-secondary rounded-md border border-border hover:border-primary/30 transition-all group/card">
+                                  <div className="text-primary font-black mb-2">#{i + 1}</div>
+                                  <div className="font-bold text-text mb-2">{opp.title}</div>
+                                  <p className="text-sm text-text-secondary leading-relaxed">{opp.description}</p>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="col-span-3 text-sm text-text-muted italic p-4 text-center border border-border rounded-md">
+                                Opportunités non disponibles.
                               </div>
-                            ))}
+                            )}
                           </div>
                         </div>
 
                         {/* PHASE 6: PLAN D'ACTION */}
-                        <div className="bg-black/40 p-8 rounded-[2rem] border border-white/5 backdrop-blur-xl relative overflow-hidden group">
+                        <div className="card p-8 backdrop-blur-xl relative overflow-hidden group">
                           <div className="flex items-center gap-3 mb-8">
-                            <div className="w-10 h-10 rounded-2xl bg-cyan-500/10 flex items-center justify-center border border-cyan-500/20">
-                              <ListChecks className="w-5 h-5 text-cyan-400" />
+                            <div className="w-10 h-10 rounded-md bg-info/10 flex items-center justify-center border border-info/20">
+                              <ListChecks className="w-5 h-5 text-info" />
                             </div>
                             <div>
-                              <h4 className="text-xl font-black text-white tracking-tight">Plan d'Action</h4>
-                              <p className="text-xs text-white/50 font-bold uppercase tracking-widest">Phase 5 : La Carte (90 Jours)</p>
+                              <h4 className="text-xl font-black text-text tracking-tight">Plan d'Action</h4>
+                              <p className="text-xs text-text-muted font-bold uppercase tracking-widest">Phase 5 : La Carte (90 Jours)</p>
                             </div>
                           </div>
-                          
-                          <div className="space-y-4">
-                            {auditData.actionPlan?.map((step, i) => (
-                              <div key={i} className="flex items-start gap-4 p-4 bg-white/5 rounded-2xl border border-white/5">
-                                <div className="w-8 h-8 rounded-full bg-cyan-500/20 flex items-center justify-center text-xs font-black text-cyan-400 shrink-0">
-                                  {i + 1}
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {auditData.actionPlan && auditData.actionPlan.length > 0 ? (
+                              auditData.actionPlan.map((step, idx) => (
+                                <div key={idx} className="p-4 bg-bg-secondary rounded-md border border-border">
+                                  <div className="font-bold text-text mb-1">{step.title}</div>
+                                  <p className="text-sm text-text-secondary">{step.description}</p>
                                 </div>
-                                <div>
-                                  <div className="font-bold text-white mb-1">{step.title}</div>
-                                  <p className="text-sm text-white/60">{step.description}</p>
-                                </div>
+                              ))
+                            ) : (
+                              <div className="text-sm text-text-muted italic p-4 text-center border border-border rounded-md">
+                                Plan d'action non disponible.
                               </div>
-                            ))}
+                            )}
                           </div>
                         </div>
 
                         {/* PHASE 4: PROJECTION */}
-                        <div className="bg-emerald-500/10 p-8 rounded-[2rem] border border-emerald-500/20 relative overflow-hidden group">
+                        <div className="bg-success/10 p-8 rounded-md border border-success/20 relative overflow-hidden group">
                           <div className="absolute top-0 right-0 p-8 opacity-10">
-                            <TrendingUp className="w-32 h-32 text-emerald-400" />
+                            <TrendingUp className="w-32 h-32 text-success" />
                           </div>
                           <div className="relative z-10">
                             <div className="flex items-center gap-3 mb-8">
-                              <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30">
-                                <TrendingUp className="w-5 h-5 text-emerald-400" />
+                              <div className="w-10 h-10 rounded-md bg-success/20 flex items-center justify-center border border-success/30">
+                                <TrendingUp className="w-5 h-5 text-success" />
                               </div>
                               <div>
-                                <h4 className="text-xl font-black text-white tracking-tight">Projection de Croissance</h4>
-                                <p className="text-xs text-emerald-400/50 font-bold uppercase tracking-widest">Phase 4 : La Vision</p>
+                                <h4 className="text-xl font-black text-text tracking-tight">Projection de Croissance</h4>
+                                <p className="text-xs text-success/50 font-bold uppercase tracking-widest">Phase 4 : La Vision</p>
                               </div>
                             </div>
                             
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
                               <div className="space-y-6">
-                                <div className="p-6 bg-black/40 rounded-2xl border border-white/10">
-                                  <div className="text-sm text-white/50 font-bold uppercase tracking-widest mb-2">Estimation ROI</div>
-                                  <div className="text-4xl font-black text-emerald-400">{auditData.roiEstimate}</div>
+                                <div className="p-6 bg-bg-secondary rounded-md border border-border">
+                                  <div className="text-sm text-text-muted font-bold uppercase tracking-widest mb-2">Estimation ROI</div>
+                                  <div className="text-4xl font-black text-success">{auditData.roiEstimate || 'Non estimé'}</div>
                                 </div>
                                 {auditData.visionStatement && (
-                                  <div className="p-6 bg-emerald-500/5 rounded-2xl border border-emerald-500/10 italic text-emerald-100/80 text-lg font-medium leading-relaxed">
+                                  <div className="p-6 bg-success/5 rounded-md border border-success/10 italic text-text-primary text-lg font-medium leading-relaxed">
                                     "{auditData.visionStatement}"
                                   </div>
                                 )}
-                                <p className="text-white/70 leading-relaxed font-medium">
-                                  {auditData.growthStrategy}
+                                <p className="text-text-secondary leading-relaxed font-medium">
+                                  {auditData.growthStrategy || 'Stratégie de croissance non disponible.'}
                                 </p>
                               </div>
-                              <div className="h-64 bg-black/40 rounded-2xl border border-white/10 p-4">
+                              <div className="h-64 bg-bg-secondary rounded-md border border-border p-4">
                                 {auditData.growthProjection && <GrowthChart data={auditData.growthProjection} />}
                               </div>
                             </div>
@@ -3355,24 +3561,24 @@ function AppContent() {
 
                         {/* PHASE 6: CTA FINAL */}
                         <div className="pt-12 text-center">
-                          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-500/20 mb-8 relative group">
-                            <div className="absolute inset-0 rounded-full bg-emerald-500/20 blur-xl group-hover:bg-emerald-500/30 transition-colors" />
-                            <Rocket className="w-10 h-10 text-emerald-400 relative z-10 group-hover:-translate-y-1 group-hover:translate-x-1 transition-transform" />
+                          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-primary/10 border border-primary/20 mb-8 relative group">
+                            <div className="absolute inset-0 rounded-full bg-primary/20 blur-xl group-hover:bg-primary/30 transition-colors" />
+                            <Rocket className="w-10 h-10 text-primary relative z-10 group-hover:-translate-y-1 group-hover:translate-x-1 transition-transform" />
                           </div>
                           
-                          <h3 className="text-3xl sm:text-5xl font-black mb-6 text-white tracking-tight">
-                            Prêt à <span className="text-emerald-400">Dominer</span> votre Marché ?
+                          <h3 className="text-3xl sm:text-5xl font-black mb-6 text-text tracking-tight">
+                            Prêt à <span className="text-primary">Dominer</span> votre Marché ?
                           </h3>
                           
-                          <p className="text-[10px] text-white/40 font-black uppercase tracking-widest mb-4">Phase 6 : L'Appel à l'Action</p>
+                          <p className="text-[10px] text-text-muted font-black uppercase tracking-widest mb-4">Phase 6 : L'Appel à l'Action</p>
                           
-                          <p className="text-xl text-white/70 mb-10 max-w-2xl mx-auto leading-relaxed font-medium">
+                          <p className="text-xl text-text-secondary mb-10 max-w-2xl mx-auto leading-relaxed font-medium">
                             Ne laissez pas vos concurrents prendre l'avance. Déployez votre stratégie IA dès aujourd'hui.
                           </p>
                           
                           <button 
                             onClick={() => setIsModalOpen(true)}
-                            className="group relative inline-flex items-center justify-center gap-3 bg-emerald-500 text-black px-10 py-5 rounded-full font-black text-xl hover:bg-emerald-400 transition-all shadow-[0_0_50px_-10px_rgba(16,185,129,0.6)] hover:scale-105"
+                            className="btn-primary px-10 py-5 text-xl flex items-center gap-3 mx-auto"
                           >
                             <span className="relative z-10">DÉPLOYER MA STRATÉGIE</span>
                             <ArrowRight className="w-6 h-6 relative z-10 group-hover:translate-x-1 transition-transform" />
@@ -3392,14 +3598,14 @@ function AppContent() {
               { icon: Target, title: t.feat2Title, desc: t.feat2Desc },
               { icon: Database, title: t.feat3Title, desc: t.feat3Desc }
             ].map((Feature, i) => (
-              <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: i * 0.1 }} className="p-6 sm:p-8 md:p-10 rounded-3xl bg-black/40 border border-white/5 hover:border-emerald-500/30 transition-all group relative overflow-hidden shadow-[0_0_30px_-10px_rgba(255,255,255,0.05)] backdrop-blur-sm">
-                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: i * 0.1 }} className="card p-6 sm:p-8 md:p-10 group relative overflow-hidden shadow-soft backdrop-blur-sm">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                 <div className="relative z-10">
-                  <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-emerald-500/10 flex items-center justify-center mb-6 sm:mb-8 border border-emerald-500/20 group-hover:scale-110 transition-transform shadow-[0_0_15px_rgba(16,185,129,0.2)]">
-                    <Feature.icon className="w-6 h-6 sm:w-8 sm:h-8 text-emerald-400" />
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-md bg-primary/10 flex items-center justify-center mb-6 sm:mb-8 border border-primary/20 group-hover:scale-110 transition-transform shadow-soft">
+                    <Feature.icon className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
                   </div>
-                  <h3 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4 text-white tracking-tight">{Feature.title}</h3>
-                  <p className="text-white text-base sm:text-lg leading-relaxed group-hover:text-emerald-100 transition-colors opacity-90">{Feature.desc}</p>
+                  <h3 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4 text-text tracking-tight">{Feature.title}</h3>
+                  <p className="text-text-secondary text-base sm:text-lg leading-relaxed group-hover:text-text-primary transition-colors">{Feature.desc}</p>
                 </div>
               </motion.div>
             ))}
@@ -3408,15 +3614,15 @@ function AppContent() {
 
         {/* How it Works */}
         {auditStep === 'idle' && (
-          <div id="how-it-works" className="mt-32 sm:mt-40 md:mt-48 pt-16 sm:pt-20 md:pt-24 border-t border-white/10 relative">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/2 h-px bg-gradient-to-r from-transparent via-emerald-500/30 to-transparent" />
+          <div id="how-it-works" className="mt-32 sm:mt-40 md:mt-48 pt-16 sm:pt-20 md:pt-24 border-t border-border relative">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/2 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
             <div className="text-center mb-12 sm:mb-16 md:mb-20">
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight mb-4 sm:mb-6 text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]">{t.howTitle}</h2>
-              <p className="text-white text-lg sm:text-xl max-w-2xl mx-auto leading-relaxed px-4 opacity-80">{t.howSub}</p>
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight mb-4 sm:mb-6 text-text drop-shadow-soft">{t.howTitle}</h2>
+              <p className="text-text-secondary text-lg sm:text-xl max-w-2xl mx-auto leading-relaxed px-4">{t.howSub}</p>
             </div>
             
             <div className="grid md:grid-cols-3 gap-10 sm:gap-12 md:gap-16 relative">
-              <div className="hidden md:block absolute top-12 sm:top-14 md:top-16 left-[20%] right-[20%] h-px bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent" />
+              <div className="hidden md:block absolute top-12 sm:top-14 md:top-16 left-[20%] right-[20%] h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
               
               {[
                 { step: "01", title: t.step1Title, desc: t.step1Desc },
@@ -3424,12 +3630,12 @@ function AppContent() {
                 { step: "03", title: t.step3Title, desc: t.step3Desc }
               ].map((item, i) => (
                 <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: i * 0.2 }} className="relative text-center group">
-                  <div className="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 mx-auto bg-black/40 backdrop-blur-sm border border-emerald-500/30 rounded-full flex items-center justify-center text-4xl sm:text-5xl font-black text-emerald-400 mb-6 sm:mb-8 relative z-10 shadow-[0_0_40px_-10px_rgba(16,185,129,0.4)] group-hover:border-emerald-400 transition-all group-hover:scale-110 font-mono">
-                    <div className="absolute inset-0 rounded-full bg-emerald-500/10 blur-md group-hover:bg-emerald-500/20 transition-colors" />
-                    <span className="relative z-10 drop-shadow-[0_0_10px_rgba(16,185,129,0.5)]">{item.step}</span>
+                  <div className="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 mx-auto bg-surface backdrop-blur-sm border border-primary/30 rounded-full flex items-center justify-center text-4xl sm:text-5xl font-black text-primary mb-6 sm:mb-8 relative z-10 shadow-soft group-hover:border-primary transition-all group-hover:scale-110 font-mono">
+                    <div className="absolute inset-0 rounded-full bg-primary/10 blur-md group-hover:bg-primary/20 transition-colors" />
+                    <span className="relative z-10 drop-shadow-soft">{item.step}</span>
                   </div>
-                  <h3 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4 text-white tracking-tight">{item.title}</h3>
-                  <p className="text-white text-base sm:text-lg leading-relaxed group-hover:text-emerald-100 transition-colors px-4 opacity-90">{item.desc}</p>
+                  <h3 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4 text-text tracking-tight">{item.title}</h3>
+                  <p className="text-text-secondary text-base sm:text-lg leading-relaxed group-hover:text-text-primary transition-colors px-4">{item.desc}</p>
                 </motion.div>
               ))}
             </div>
@@ -3438,16 +3644,16 @@ function AppContent() {
 
         {/* Testimonials */}
         {auditStep === 'idle' && (
-          <div className="mt-32 sm:mt-40 md:mt-48 pt-16 sm:pt-20 md:pt-24 border-t border-white/10 relative">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/2 h-px bg-gradient-to-r from-transparent via-emerald-500/30 to-transparent" />
+          <div className="mt-32 sm:mt-40 md:mt-48 pt-16 sm:pt-20 md:pt-24 border-t border-border relative">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/2 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
             <div className="text-center mb-12 sm:mb-16 md:mb-20">
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight mb-4 sm:mb-6 text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.1)] px-4">{t.testimonialsTitle}</h2>
-              <p className="text-white text-lg sm:text-xl max-w-2xl mx-auto leading-relaxed px-4 opacity-80">{t.testimonialsSub}</p>
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight mb-4 sm:mb-6 text-text drop-shadow-soft px-4">{t.testimonialsTitle}</h2>
+              <p className="text-text-secondary text-lg sm:text-xl max-w-2xl mx-auto leading-relaxed px-4">{t.testimonialsSub}</p>
             </div>
 
             <div className="grid md:grid-cols-3 gap-6 sm:gap-8">
               {[
-                { name: "Marc D.", role: "Artisan Plombier", content: "RankEngine a littéralement sauvé mon entreprise. Je suis passé de 2 appels par semaine à 5 par jour en seulement 2 mois.", city: "Annecy" },
+                { name: "Marc D.", role: "Artisan Plombier", content: "Renk a littéralement sauvé mon entreprise. Je suis passé de 2 appels par semaine à 5 par jour en seulement 2 mois.", city: "Annecy" },
                 { name: "Elena R.", role: "Cabinet Dentaire", content: "L'optimisation pour ChatGPT nous a apporté une clientèle plus jeune et plus qualifiée. C'est bluffant.", city: "Lyon" },
                 { name: "Thomas L.", role: "Agence Immobilière", content: "Le monopole par ville est un avantage injuste. Mes concurrents ne comprennent pas comment je domine toutes les recherches.", city: "Bordeaux" }
               ].map((testimonial, i) => (
@@ -3457,23 +3663,23 @@ function AppContent() {
                   whileInView={{ opacity: 1, scale: 1 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.5, delay: i * 0.1 }}
-                  className="p-6 sm:p-8 md:p-10 rounded-3xl bg-black/40 border border-white/5 relative group hover:border-emerald-500/30 transition-all shadow-[0_0_30px_-10px_rgba(255,255,255,0.05)] overflow-hidden backdrop-blur-sm"
+                  className="card p-6 sm:p-8 md:p-10 relative group hover:border-primary/30 transition-all shadow-soft overflow-hidden backdrop-blur-sm"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                   <div className="relative z-10">
                     <div className="flex gap-1.5 mb-4 sm:mb-6">
-                      {[...Array(5)].map((_, i) => <Zap key={i} className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400 fill-emerald-400 drop-shadow-[0_0_5px_rgba(16,185,129,0.5)]" />)}
+                      {[...Array(5)].map((_, i) => <Zap key={i} className="w-4 h-4 sm:w-5 sm:h-5 text-primary fill-primary drop-shadow-soft" />)}
                     </div>
-                    <p className="text-white italic mb-6 sm:mb-8 leading-relaxed text-lg sm:text-xl font-medium opacity-90">"{testimonial.content}"</p>
-                    <div className="flex items-center gap-4 sm:gap-5 pt-4 sm:pt-6 border-t border-white/10">
-                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-400 p-[2px] shadow-[0_0_10px_rgba(16,185,129,0.3)] shrink-0">
-                        <div className="w-full h-full rounded-full bg-zinc-900 flex items-center justify-center text-emerald-400 font-bold text-base sm:text-lg">
+                    <p className="text-text italic mb-6 sm:mb-8 leading-relaxed text-lg sm:text-xl font-medium">"{testimonial.content}"</p>
+                    <div className="flex items-center gap-4 sm:gap-5 pt-4 sm:pt-6 border-t border-border">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-main p-[2px] shadow-soft shrink-0">
+                        <div className="w-full h-full rounded-full bg-surface flex items-center justify-center text-primary font-bold text-base sm:text-lg">
                           {testimonial.name.charAt(0)}
                         </div>
                       </div>
                       <div>
-                        <div className="font-bold text-white text-sm sm:text-base">{testimonial.name}</div>
-                        <div className="text-xs sm:text-sm text-emerald-400/80 font-medium">{testimonial.role} • {testimonial.city}</div>
+                        <div className="font-bold text-text text-sm sm:text-base">{testimonial.name}</div>
+                        <div className="text-xs sm:text-sm text-text-secondary font-medium">{testimonial.role} • {testimonial.city}</div>
                       </div>
                     </div>
                   </div>
@@ -3483,30 +3689,77 @@ function AppContent() {
           </div>
         )}
 
+        {/* Comparison Table */}
+        {auditStep === 'idle' && (
+          <div className="mt-32 sm:mt-40 md:mt-48 pt-16 sm:pt-20 md:pt-24 border-t border-border relative">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/2 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+            <div className="text-center mb-12 sm:mb-16 md:mb-20">
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight mb-4 sm:mb-6 text-text drop-shadow-soft px-4">
+                {t.landingWhyChooseUs}
+              </h2>
+            </div>
+            <div className="max-w-5xl mx-auto overflow-x-auto pb-8 px-4 sm:px-0">
+              <div className="bg-surface rounded-md border border-border shadow-soft overflow-hidden relative group hover:border-primary/30 transition-all backdrop-blur-sm min-w-[600px]">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                <table className="w-full text-left border-collapse relative z-10">
+                  <thead>
+                    <tr className="border-b border-border bg-bg-secondary">
+                      <th className="py-4 px-4 sm:py-6 sm:px-6 md:py-8 md:px-8 text-text font-bold uppercase tracking-widest text-xs sm:text-sm">Features</th>
+                      <th className="py-4 px-4 sm:py-6 sm:px-6 md:py-8 md:px-8 text-primary font-black text-lg sm:text-xl drop-shadow-soft">
+                        <RenkLogo className="h-16 w-auto" variant="small" />
+                      </th>
+                      <th className="py-4 px-4 sm:py-6 sm:px-6 md:py-8 md:px-8 text-text-secondary font-bold uppercase tracking-widest text-xs sm:text-sm">Traditional SEO</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {[
+                      { feature: 'AI Semantic Mapping', us: true, them: false },
+                      { feature: 'Instant Local Indexing', us: true, them: false },
+                      { feature: 'AEO Optimization', us: true, them: false },
+                      { feature: 'Automated Content', us: true, them: 'Partial' },
+                      { feature: 'Real-time ROI Tracking', us: true, them: false },
+                    ].map((row, i) => (
+                      <tr key={i} className="hover:bg-bg-secondary transition-colors group/row">
+                        <td className="py-4 px-4 sm:py-5 sm:px-6 md:py-6 md:px-8 text-text font-bold text-lg sm:text-xl group-hover/row:text-primary transition-colors">{row.feature}</td>
+                        <td className="py-4 px-4 sm:py-5 sm:px-6 md:py-6 md:px-8">
+                          {row.us === true ? <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-primary/20 flex items-center justify-center border border-primary/30 shadow-soft"><CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-primary" /></div> : <span className="text-text font-bold">{row.us}</span>}
+                        </td>
+                        <td className="py-4 px-4 sm:py-5 sm:px-6 md:py-6 md:px-8">
+                          {row.them === true ? <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 text-text-muted" /> : row.them === false ? <X className="w-5 h-5 sm:w-6 sm:h-6 text-text-muted" /> : <span className="text-text-secondary font-bold px-2 py-0.5 sm:px-3 sm:py-1 bg-bg-secondary rounded-full text-xs sm:text-sm border border-border">{row.them}</span>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Pricing */}
         {auditStep === 'idle' && (
-          <div id="pricing" className="mt-32 sm:mt-40 md:mt-48 pt-16 sm:pt-20 md:pt-24 border-t border-white/10 mb-24 sm:mb-32 relative">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/2 h-px bg-gradient-to-r from-transparent via-emerald-500/30 to-transparent" />
+          <div id="pricing" className="mt-32 sm:mt-40 md:mt-48 pt-16 sm:pt-20 md:pt-24 border-t border-border mb-24 sm:mb-32 relative">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/2 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
             <div className="text-center mb-12 sm:mb-16 md:mb-20">
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight mb-4 sm:mb-6 text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.1)] px-4">{t.priceTitle}</h2>
-              <p className="text-white text-lg sm:text-xl max-w-2xl mx-auto leading-relaxed px-4 opacity-80">{t.priceSub}</p>
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight mb-4 sm:mb-6 text-text drop-shadow-soft px-4">{t.priceTitle}</h2>
+              <p className="text-text-secondary text-lg sm:text-xl max-w-2xl mx-auto leading-relaxed px-4">{t.priceSub}</p>
             </div>
 
             <div className="max-w-lg mx-auto px-4 sm:px-0">
-              <motion.div initial={{ opacity: 0, scale: 0.95 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} className="p-6 sm:p-8 md:p-10 rounded-[1.5rem] sm:rounded-[2rem] md:rounded-[2.5rem] bg-black/60 border border-emerald-500/30 relative overflow-hidden shadow-[0_0_50px_rgba(16,185,129,0.15)] group hover:border-emerald-500/50 transition-all backdrop-blur-md">
-                <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/10 to-transparent opacity-50 group-hover:opacity-100 transition-opacity" />
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} className="p-6 sm:p-8 md:p-10 rounded-md bg-surface border border-primary/30 relative overflow-hidden shadow-soft group hover:border-primary/50 transition-all backdrop-blur-md">
+                <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent opacity-50 group-hover:opacity-100 transition-opacity" />
                 <div className="absolute top-0 right-0 p-4 sm:p-6 z-20">
-                  <div className="bg-emerald-500 text-black text-xs sm:text-sm font-black px-3 py-1 sm:px-4 sm:py-1.5 rounded-full uppercase tracking-widest shadow-[0_0_15px_rgba(16,185,129,0.5)]">
+                  <div className="bg-primary text-white text-xs sm:text-sm font-black px-3 py-1 sm:px-4 sm:py-1.5 rounded-full uppercase tracking-widest shadow-soft">
                     Most Popular
                   </div>
                 </div>
                 <div className="relative z-10">
-                  <h3 className="text-2xl sm:text-3xl font-bold mb-2 sm:mb-3 text-white tracking-tight">{t.planName}</h3>
-                  <p className="text-white text-lg sm:text-xl mb-6 sm:mb-8 opacity-80">{t.planSub}</p>
-                  <div className="mb-8 sm:mb-10 pb-6 sm:pb-8 border-b border-white/10">
-                    <span className="text-5xl sm:text-6xl font-black text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]">{t.planPrice}</span>
-                    <span className="text-white text-lg sm:text-xl font-bold opacity-80"> {t.planSetup}</span>
-                    <div className="text-emerald-400 font-bold mt-2 sm:mt-3 text-lg sm:text-xl">{t.planMo}</div>
+                  <h3 className="text-2xl sm:text-3xl font-bold mb-2 sm:mb-3 text-text tracking-tight">{t.planName}</h3>
+                  <p className="text-text-secondary text-lg sm:text-xl mb-6 sm:mb-8">{t.planSub}</p>
+                  <div className="mb-8 sm:mb-10 pb-6 sm:pb-8 border-b border-border">
+                    <span className="text-5xl sm:text-6xl font-black text-text drop-shadow-soft">{t.planPrice}</span>
+                    <span className="text-text-secondary text-lg sm:text-xl font-bold"> {t.planSetup}</span>
+                    <div className="text-primary font-bold mt-2 sm:mt-3 text-lg sm:text-xl">{t.planMo}</div>
                   </div>
                   
                   <ul className="space-y-4 sm:space-y-5 mb-8 sm:mb-10">
@@ -3519,17 +3772,17 @@ function AppContent() {
                       t.check6
                     ].map((feature, i) => (
                       <li key={i} className="flex items-start gap-3 sm:gap-4">
-                        <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0 mt-0.5 border border-emerald-500/30 shadow-[0_0_8px_rgba(16,185,129,0.3)]">
-                          <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
+                        <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-primary/20 flex items-center justify-center shrink-0 mt-0.5 border border-primary/30 shadow-soft">
+                          <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
                         </div>
-                        <span className="text-white text-lg sm:text-xl font-bold leading-snug opacity-90">{feature}</span>
+                        <span className="text-text font-bold leading-snug">{feature}</span>
                       </li>
                     ))}
                   </ul>
                   
                   <button 
                     onClick={() => setView('conversion')}
-                    className="w-full bg-emerald-500 text-black py-4 sm:py-5 rounded-2xl font-bold text-base sm:text-lg hover:bg-emerald-400 transition-all shadow-[0_0_20px_rgba(16,185,129,0.4)] hover:shadow-[0_0_30px_rgba(16,185,129,0.6)] hover:scale-[1.02] active:scale-[0.98]"
+                    className="btn-primary w-full py-4 sm:py-5 text-base sm:text-lg"
                   >
                     {t.planCta}
                   </button>
@@ -3541,89 +3794,82 @@ function AppContent() {
       </main>
 
       {/* Footer */}
-      {auditStep === 'idle' && (
-        <footer className="border-t border-white/10 py-12 text-center text-white text-base font-bold bg-black/40 backdrop-blur-sm opacity-80">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <Zap className="w-5 h-5 text-emerald-400 drop-shadow-[0_0_5px_rgba(16,185,129,0.5)]" />
-            <span className="font-bold text-white text-lg tracking-tight">RankEngine.ai</span>
-          </div>
-          <p className="tracking-wide">© 2026 RankEngine.ai. {t.footerRights}</p>
-        </footer>
-      )}
+      <footer className="border-t border-border py-12 text-center text-text-secondary text-base font-bold bg-bg-secondary backdrop-blur-sm">
+        <div className="flex items-center justify-center gap-2 mb-4">
+          <RenkLogo className="h-16 w-auto" variant="small" />
+        </div>
+        <p className="tracking-wide">© 2026 Renk. {t.footerRights}</p>
+      </footer>
 
       {/* Landing Page Preview Modal */}
       <AnimatePresence>
         {isPreviewOpen && auditData && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/95 backdrop-blur-2xl overflow-y-auto">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-bg-primary/90 backdrop-blur-2xl overflow-y-auto">
             <motion.div 
               initial={{ opacity: 0, scale: 0.95, y: 30 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 30 }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="relative w-full max-w-6xl bg-zinc-950 border border-white/10 rounded-[2rem] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.8)]"
+              className="relative w-full max-w-6xl bg-surface border border-border rounded-md overflow-hidden shadow-soft"
             >
               {/* Browser Header */}
-              <div className="bg-[#1a1a1a] border-b border-white/5 p-4 flex items-center justify-between">
+              <div className="bg-bg-secondary border-b border-border p-4 flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <div className="flex gap-2">
                     <div className="w-3.5 h-3.5 rounded-full bg-[#ff5f56] border border-[#e0443e]" />
                     <div className="w-3.5 h-3.5 rounded-full bg-[#ffbd2e] border border-[#dea123]" />
                     <div className="w-3.5 h-3.5 rounded-full bg-[#27c93f] border border-[#1aab29]" />
                   </div>
-                  <div className="flex items-center gap-3 px-4 py-1.5 bg-black/50 rounded-xl text-sm text-white font-mono border border-white/5 min-w-[300px] shadow-inner opacity-90">
-                    <Lock className="w-3 h-3 text-emerald-500" />
-                    <span className="text-white/80">{auditUrl.replace(/^https?:\/\//, '')}</span>
-                    <span className="text-black/40">/special-offer</span>
+                  <div className="flex items-center gap-3 px-4 py-1.5 bg-bg-primary rounded-md text-sm text-text font-mono border border-border min-w-[300px] shadow-inner">
+                    <Lock className="w-3 h-3 text-success" />
+                    <span className="text-text-secondary">{auditUrl.replace(/^https?:\/\//, '')}</span>
+                    <span className="text-text-muted">/special-offer</span>
                   </div>
                 </div>
                 <button 
                   onClick={() => setIsPreviewOpen(false)}
-                  className="p-2 hover:bg-white/10 rounded-full transition-colors group"
+                  className="p-2 hover:bg-bg-primary rounded-full transition-colors group"
                 >
-                  <X className="w-5 h-5 text-white group-hover:text-emerald-400 opacity-80" />
+                  <X className="w-5 h-5 text-text-secondary group-hover:text-primary" />
                 </button>
               </div>
 
               {/* Simulated Landing Page Content */}
-              <div className="h-[75vh] overflow-y-auto bg-white text-black font-sans relative">
+              <div className="h-[75vh] overflow-y-auto bg-surface text-text font-sans relative">
                 {/* Nav */}
-                <nav className="px-8 py-6 border-b border-zinc-100 flex justify-between items-center bg-white/80 backdrop-blur-md sticky top-0 z-50">
-                  <div className="font-black text-2xl tracking-tighter text-black flex items-center gap-2">
-                    <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(5,150,105,0.3)]">
-                      <span className="text-white text-sm font-bold">RE</span>
-                    </div>
-                    {auditUrl.split('.')[1]?.toUpperCase() || 'LOCAL'} <span className="text-white font-light opacity-60">|</span> <span className="text-emerald-600 font-black text-2xl">{auditData.extractedLocation || 'Local'}</span>
-                  </div>
-                  <div className="hidden md:flex gap-8 text-sm font-black text-white uppercase tracking-wider opacity-80">
-                    <span className="hover:text-emerald-600 cursor-pointer transition-colors">Services</span>
-                    <span className="hover:text-emerald-600 cursor-pointer transition-colors">About</span>
-                    <span className="text-emerald-600 cursor-pointer">Contact</span>
+                <nav className="px-8 py-6 border-b border-border flex justify-between items-center bg-surface/80 backdrop-blur-md sticky top-0 z-50">
+                  <RenkLogo className="h-16 w-auto" variant="small" />
+                    {auditUrl.split('.')[1]?.toUpperCase() || 'LOCAL'} <span className="text-text-muted font-light opacity-60">|</span> <span className="text-primary font-bold text-2xl">{auditData.extractedLocation || 'Local'}</span>
+                  <div className="hidden md:flex gap-8 text-sm font-bold text-text-secondary uppercase tracking-wider">
+                    <span className="hover:text-primary cursor-pointer transition-colors">Services</span>
+                    <span className="hover:text-primary cursor-pointer transition-colors">About</span>
+                    <span className="text-primary cursor-pointer">Contact</span>
                   </div>
                 </nav>
 
                 {/* Hero */}
                 <header className="py-32 px-8 max-w-5xl mx-auto text-center relative overflow-hidden">
-                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-emerald-50 rounded-full blur-3xl -z-10 opacity-50" />
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/5 rounded-full blur-3xl -z-10 opacity-50" />
                   <motion.div
                     initial={{ opacity: 0, y: 30 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3, duration: 0.8 }}
                   >
-                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-100 text-emerald-800 font-semibold text-sm mb-8 shadow-sm">
+                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary/10 text-primary font-bold text-sm mb-8 shadow-soft">
                       <Sparkles className="w-4 h-4" />
                       <span>{t.landingSpecialOffer}</span>
                     </div>
-                    <h1 className="text-6xl md:text-7xl font-black mb-8 leading-[1.1] tracking-tight text-black">
-                      {auditData.pageTitle}
+                    <h1 className="text-6xl md:text-7xl font-bold mb-8 leading-[1.1] tracking-tight text-text">
+                      {auditData.pageTitle || 'Titre de page non disponible'}
                     </h1>
-                    <p className="text-2xl text-white mb-12 leading-relaxed max-w-3xl mx-auto font-medium opacity-80">
-                      {auditData.pageContent}
+                    <p className="text-2xl text-text-secondary mb-12 leading-relaxed max-w-3xl mx-auto font-medium">
+                      {auditData.pageContent || 'Contenu de page non disponible'}
                     </p>
                     <div className="flex flex-col sm:flex-row justify-center gap-4">
-                      <button className="bg-emerald-600 text-white px-10 py-5 rounded-2xl font-bold text-lg shadow-[0_20px_40px_-15px_rgba(5,150,105,0.5)] hover:bg-emerald-700 hover:-translate-y-1 transition-all">
+                      <button className="btn-primary px-10 py-5 text-lg">
                         {t.landingGetFreeQuote}
                       </button>
-                      <button className="bg-white border-2 border-emerald-600/20 text-black px-10 py-5 rounded-2xl font-black text-xl hover:bg-emerald-50 hover:border-emerald-600 transition-all shadow-lg hover:scale-[1.02] active:scale-[0.98]">
+                      <button className="bg-surface border-2 border-primary/20 text-text px-10 py-5 rounded-md font-bold text-xl hover:bg-bg-secondary hover:border-primary transition-all shadow-soft hover:scale-[1.02] active:scale-[0.98]">
                         {t.landingOurServices}
                       </button>
                     </div>
@@ -3631,48 +3877,46 @@ function AppContent() {
                 </header>
 
                 {/* Expertise Section */}
-                <section className="bg-zinc-50 py-32 px-8 border-t border-zinc-100">
+                <section className="bg-bg-secondary py-32 px-8 border-t border-border">
                   <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-20 items-center">
                     <div className="space-y-8">
-                      <h2 className="text-4xl md:text-5xl font-black text-black tracking-tight">
+                      <h2 className="text-4xl md:text-5xl font-bold text-text tracking-tight">
                         {t.landingOurExpertise}
                       </h2>
-                      <p className="text-xl text-black/70 leading-relaxed font-medium">
+                      <p className="text-xl text-text-secondary leading-relaxed font-medium">
                         {t.landingExpertiseDesc.replace('{company}', auditData.companyName || (lang === 'fr' ? 'notre équipe' : lang === 'es' ? 'nuestro equipo' : 'our team'))}
                       </p>
                       <div className="space-y-6 pt-4">
                         {[t.landingProvenResults, t.landingDedicatedSupport, t.landingIndustryExperts].map((item, i) => (
-                          <div key={i} className="flex items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-zinc-100">
-                            <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center shrink-0">
-                              <CheckCircle2 className="w-6 h-6 text-emerald-600" />
+                          <div key={i} className="flex items-center gap-4 bg-surface p-4 rounded-md shadow-soft border border-border">
+                            <div className="w-12 h-12 bg-primary/10 rounded-md flex items-center justify-center shrink-0">
+                              <CheckCircle2 className="w-6 h-6 text-primary" />
                             </div>
-                            <span className="font-black text-xl text-black">{item}</span>
+                            <span className="font-bold text-xl text-text">{item}</span>
                           </div>
                         ))}
                       </div>
                     </div>
-                    <div className="aspect-square md:aspect-[4/3] bg-white rounded-[2.5rem] overflow-hidden relative border border-zinc-200 shadow-2xl p-8 flex flex-col items-center justify-center text-center">
+                    <div className="aspect-square md:aspect-[4/3] bg-surface rounded-md overflow-hidden relative border border-border shadow-soft p-8 flex flex-col items-center justify-center text-center">
                       <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] opacity-50" />
                       <div className="relative z-10">
-                        <div className="w-24 h-24 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
-                          <Target className="w-12 h-12 text-emerald-600" />
+                        <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+                          <Target className="w-12 h-12 text-primary" />
                         </div>
-                        <h3 className="text-2xl font-bold text-black mb-2">
+                        <h3 className="text-2xl font-bold text-text mb-2">
                           {t.landingStrategyResults}
                         </h3>
-                        <p className="text-black/70 font-bold">Approche basée sur les données pour un ROI maximal.</p>
+                        <p className="text-text-secondary font-bold">Approche basée sur les données pour un ROI maximal.</p>
                       </div>
                     </div>
                   </div>
                 </section>
 
                 {/* Footer */}
-                <footer className="py-16 px-8 bg-zinc-950 text-white text-center">
-                  <div className="w-12 h-12 bg-zinc-800 rounded-xl flex items-center justify-center mx-auto mb-6">
-                    <span className="text-white font-bold">RE</span>
-                  </div>
+                <footer className="py-16 px-8 bg-[#0F172A] text-white text-center">
+                  <RenkLogo className="h-14 w-auto mx-auto mb-6" variant="small" />
                   <p className="text-white text-base font-bold tracking-wide opacity-80">
-                    © 2026 {auditUrl.replace(/^https?:\/\/(www\.)?/, '').split('.')[0]?.toUpperCase()} - {auditData.extractedLocation}
+                    © 2026 {auditUrl.replace(/^https?:\/\/(www\.)?/, '').split('.')[0]?.toUpperCase()} - {auditData.extractedLocation || 'Local'}
                   </p>
                 </footer>
               </div>
@@ -3696,39 +3940,39 @@ function AppContent() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-md bg-[#0f0f0f] border border-white/10 rounded-3xl p-8 shadow-2xl overflow-hidden"
+              className="relative w-full max-w-md bg-surface border border-border rounded-md p-8 shadow-soft overflow-hidden"
             >
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 to-cyan-500" />
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-main" />
               <button 
                 onClick={() => setIsSharing(false)}
-                className="absolute top-6 right-6 p-2 rounded-full hover:bg-white/5 transition-colors"
+                className="absolute top-6 right-6 p-2 rounded-full hover:bg-bg-secondary transition-colors"
               >
-                <X className="w-5 h-5 text-white opacity-80 hover:opacity-100 transition-opacity" />
+                <X className="w-5 h-5 text-text-secondary hover:text-primary transition-colors" />
               </button>
 
               <div className="text-center mb-8">
-                <div className="w-16 h-16 bg-emerald-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-emerald-500/20">
-                  <Share2 className="w-8 h-8 text-emerald-400" />
+                <div className="w-16 h-16 bg-primary/10 rounded-md flex items-center justify-center mx-auto mb-4 border border-primary/20">
+                  <Share2 className="w-8 h-8 text-primary" />
                 </div>
-                <h3 className="text-2xl font-bold text-white mb-2">Share Audit Report</h3>
-                <p className="text-base text-white font-bold opacity-80">Envoyez cette analyse professionnelle à votre équipe ou à vos clients.</p>
+                <h3 className="text-2xl font-bold text-text mb-2">Share Audit Report</h3>
+                <p className="text-base text-text-secondary font-bold">Envoyez cette analyse professionnelle à votre équipe ou à vos clients.</p>
               </div>
 
               <div className="space-y-4">
                 <div>
-                  <label className="text-xs font-black uppercase tracking-widest text-white mb-2 block opacity-90">Lien du Rapport</label>
+                  <label className="text-xs font-black uppercase tracking-widest text-text-muted mb-2 block">Lien du Rapport</label>
                   <div className="flex gap-2">
                     <input 
                       type="text" 
                       readOnly 
                       value={`${window.location.origin}/report/${Math.random().toString(36).substring(7)}`}
-                      className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white font-bold outline-none focus:border-emerald-500/50 transition-colors opacity-90"
+                      className="flex-1 bg-bg-secondary border border-border rounded-md px-4 py-3 text-sm text-text font-bold outline-none focus:border-primary/50 transition-colors"
                     />
                     <button 
                       onClick={() => {
                         navigator.clipboard.writeText(`${window.location.origin}/report/xyz`);
                       }}
-                      className="px-4 py-3 bg-emerald-500 text-black rounded-xl font-bold text-xs hover:bg-emerald-400 transition-all"
+                      className="btn-primary px-4 py-3 text-xs"
                     >
                       Copy
                     </button>
@@ -3737,11 +3981,11 @@ function AppContent() {
 
                 <div className="grid grid-cols-4 gap-3">
                   {['Email', 'Slack', 'WhatsApp', 'LinkedIn'].map((platform) => (
-                    <button key={platform} className="flex flex-col items-center gap-2 p-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors group">
-                      <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-emerald-500/20 transition-colors">
-                        <Globe className="w-4 h-4 text-white group-hover:text-emerald-400 opacity-80" />
+                    <button key={platform} className="flex flex-col items-center gap-2 p-3 rounded-md bg-bg-secondary border border-border hover:bg-primary/5 transition-colors group">
+                      <div className="w-8 h-8 rounded-md bg-surface flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                        <Globe className="w-4 h-4 text-text-secondary group-hover:text-primary" />
                       </div>
-                      <span className="text-xs font-black text-white group-hover:text-emerald-400 transition-colors uppercase tracking-tighter opacity-90">{platform}</span>
+                      <span className="text-[10px] font-black text-text-muted group-hover:text-primary transition-colors uppercase tracking-tighter">{platform}</span>
                     </button>
                   ))}
                 </div>
@@ -3749,7 +3993,7 @@ function AppContent() {
 
               <button 
                 onClick={() => setIsSharing(false)}
-                className="w-full mt-8 py-4 bg-white/5 border border-white/10 text-white rounded-2xl font-bold hover:bg-white/10 transition-all"
+                className="w-full mt-8 py-4 bg-bg-secondary border border-border text-text font-bold rounded-md hover:bg-bg-primary transition-all"
               >
                 Close
               </button>
@@ -3774,12 +4018,12 @@ function AppContent() {
               animate={{ opacity: 1, scale: 1, y: 0 }} 
               exit={{ opacity: 0, scale: 0.95, y: 30 }} 
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="relative w-full max-w-md bg-zinc-950 border border-white/10 rounded-[2.5rem] p-10 shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden"
+              className="relative w-full max-w-md bg-surface border border-border rounded-md p-10 shadow-soft overflow-hidden"
             >
-              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
               <button 
                 onClick={() => setIsModalOpen(false)}
-                className="absolute top-6 right-6 text-white hover:text-emerald-400 hover:bg-white/10 p-2 rounded-full transition-all z-10 opacity-80"
+                className="absolute top-6 right-6 text-text-secondary hover:text-primary hover:bg-bg-primary p-2 rounded-full transition-all z-10"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -3787,22 +4031,22 @@ function AppContent() {
               <div className="relative z-10">
                 {formState === 'success' ? (
                   <div className="text-center py-10">
-                    <div className="w-20 h-20 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-8 border border-emerald-500/30 shadow-[0_0_30px_rgba(16,185,129,0.2)]">
-                      <CheckCircle2 className="w-10 h-10 text-emerald-400" />
+                    <div className="w-20 h-20 bg-success/20 rounded-full flex items-center justify-center mx-auto mb-8 border border-success/30 shadow-soft">
+                      <CheckCircle2 className="w-10 h-10 text-success" />
                     </div>
-                    <h3 className="text-3xl font-bold mb-4 text-white tracking-tight">{t.successTitle}</h3>
-                    <p className="text-white text-xl font-bold leading-relaxed opacity-90">{t.successSub}</p>
+                    <h3 className="text-3xl font-bold mb-4 text-text tracking-tight">{t.successTitle}</h3>
+                    <p className="text-text-secondary text-xl font-bold leading-relaxed">{t.successSub}</p>
                   </div>
                 ) : formState === 'error' ? (
                   <div className="text-center py-10">
-                    <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-8 border border-red-500/30 shadow-[0_0_30px_rgba(239,68,68,0.2)]">
-                      <X className="w-10 h-10 text-red-400" />
+                    <div className="w-20 h-20 bg-error/20 rounded-full flex items-center justify-center mx-auto mb-8 border border-error/30 shadow-soft">
+                      <X className="w-10 h-10 text-error" />
                     </div>
-                    <h3 className="text-3xl font-bold mb-4 text-white tracking-tight">{t.errTitle}</h3>
-                    <p className="text-white text-xl font-bold mb-8 leading-relaxed opacity-90">{t.errSub}</p>
+                    <h3 className="text-3xl font-bold mb-4 text-text tracking-tight">{t.errTitle}</h3>
+                    <p className="text-text-secondary text-xl font-bold mb-8 leading-relaxed">{t.errSub}</p>
                     <button 
                       onClick={() => setFormState('idle')}
-                      className="bg-white text-black px-8 py-4 rounded-xl font-bold text-lg hover:bg-zinc-200 transition-colors shadow-lg"
+                      className="btn-primary px-8 py-4"
                     >
                       {t.btnTryAgain}
                     </button>
@@ -3810,59 +4054,59 @@ function AppContent() {
                 ) : (
                   <>
                     <div className="mb-10 text-center">
-                      <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 mb-6 shadow-[0_0_20px_rgba(16,185,129,0.1)]">
-                        <Zap className="w-8 h-8 text-emerald-400" />
+                      <div className="inline-flex items-center justify-center mb-6">
+                        <RenkLogo className="h-16 w-auto" variant="small" />
                       </div>
-                      <h3 className="text-3xl font-bold mb-3 text-white tracking-tight">{t.formTitle}</h3>
-                      <p className="text-white text-lg font-bold leading-relaxed opacity-80">{t.formSub}</p>
+                      <h3 className="text-3xl font-bold mb-3 text-text tracking-tight">{t.formTitle}</h3>
+                      <p className="text-text-secondary text-lg font-bold leading-relaxed">{t.formSub}</p>
                     </div>
                     
                     <form onSubmit={handleSubmit} className="space-y-5">
                       <div>
-                        <label className="block text-base font-black text-white mb-2 opacity-80">{t.labelBiz}</label>
+                        <label className="block text-base font-black text-text-secondary mb-2 uppercase tracking-widest text-[10px]">{t.labelBiz}</label>
                         <input 
                           required 
                           type="text" 
                           name="businessName"
                           value={formData.businessName}
                           onChange={handleInputChange}
-                          className="w-full bg-black/50 border border-white/10 rounded-xl px-5 py-4 text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all placeholder:text-white/50 shadow-inner" 
+                          className="input w-full" 
                           placeholder="e.g. Apex Plumbing" 
                         />
                       </div>
                       <div>
-                        <label className="block text-base font-black text-white mb-2 opacity-80">{t.labelUrl}</label>
+                        <label className="block text-base font-black text-text-secondary mb-2 uppercase tracking-widest text-[10px]">{t.labelUrl}</label>
                         <input 
                           required 
                           type="url" 
                           name="websiteUrl"
                           value={formData.websiteUrl}
                           onChange={handleInputChange}
-                          className="w-full bg-black/50 border border-white/10 rounded-xl px-5 py-4 text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all placeholder:text-white/50 shadow-inner" 
+                          className="input w-full" 
                           placeholder="https://..." 
                         />
                       </div>
                       <div>
-                        <label className="block text-base font-black text-white mb-2 opacity-80">{t.labelCity}</label>
+                        <label className="block text-base font-black text-text-secondary mb-2 uppercase tracking-widest text-[10px]">{t.labelCity}</label>
                         <input 
                           required 
                           type="text" 
                           name="targetCity"
                           value={formData.targetCity}
                           onChange={handleInputChange}
-                          className="w-full bg-black/50 border border-white/10 rounded-xl px-5 py-4 text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all placeholder:text-white/50 shadow-inner" 
+                          className="input w-full" 
                           placeholder="e.g. Austin, TX" 
                         />
                       </div>
                       <div>
-                        <label className="block text-base font-black text-white mb-2 opacity-80">{t.labelEmail}</label>
+                        <label className="block text-base font-black text-text-secondary mb-2 uppercase tracking-widest text-[10px]">{t.labelEmail}</label>
                         <input 
                           required 
                           type="email" 
                           name="email"
                           value={formData.email}
                           onChange={handleInputChange}
-                          className="w-full bg-black/50 border border-white/10 rounded-xl px-5 py-4 text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all placeholder:text-white/50 shadow-inner" 
+                          className="input w-full" 
                           placeholder="you@company.com" 
                         />
                       </div>
@@ -3870,7 +4114,7 @@ function AppContent() {
                       <button 
                         type="submit" 
                         disabled={formState === 'checkout'}
-                        className="w-full bg-emerald-500 text-black py-5 rounded-xl font-bold text-lg hover:bg-emerald-400 transition-all mt-8 flex items-center justify-center gap-3 disabled:opacity-70 shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] hover:scale-[1.02] active:scale-[0.98]"
+                        className="btn-primary w-full py-5 mt-8 flex items-center justify-center gap-3 disabled:opacity-70"
                       >
                         {formState === 'checkout' ? (
                           <><Loader2 className="w-6 h-6 animate-spin" /> {t.btnProcessing}</>

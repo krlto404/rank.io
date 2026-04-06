@@ -52,13 +52,13 @@ export const InteractiveBackground = () => {
               ease: "linear",
               repeatType: "reverse"
             }}
-            className="absolute w-1 h-1 bg-emerald-500/30 rounded-full blur-[1px]"
+            className="absolute w-1 h-1 bg-primary/30 rounded-full blur-[1px]"
           />
         ))}
       </div>
 
       <div className="relative w-[1200px] h-[1200px] opacity-10">
-        {/* Blob 1 - Emerald */}
+        {/* Blob 1 - Blue */}
         <motion.div
           style={{
             x: tx1,
@@ -74,10 +74,10 @@ export const InteractiveBackground = () => {
             repeat: Infinity,
             ease: "easeInOut"
           }}
-          className="absolute inset-0 bg-emerald-500/5 blur-[200px]"
+          className="absolute inset-0 bg-primary/5 blur-[200px]"
         />
         
-        {/* Blob 2 - Cyan */}
+        {/* Blob 2 - Info (also Blue) */}
         <motion.div
           style={{
             x: tx2,
@@ -93,7 +93,7 @@ export const InteractiveBackground = () => {
             repeat: Infinity,
             ease: "easeInOut"
           }}
-          className="absolute inset-0 bg-cyan-500/5 blur-[200px]"
+          className="absolute inset-0 bg-info/5 blur-[200px]"
         />
       </div>
     </div>
