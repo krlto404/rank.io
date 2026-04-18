@@ -1,0 +1,40 @@
+{
+  "entities": {
+    "users": {
+      "title": "User Profile",
+      "description": "Stores user profile information and audit history",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "lastLogin": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email"]
+    },
+    "audits": {
+      "title": "SEO Audit",
+      "description": "Stores the results of website SEO audits",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "UID of the user who requested the audit" },
+        "url": { "type": "string", "format": "uri" },
+        "score": { "type": "number" },
+        "results": { "type": "object" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "url", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "users",
+      "description": "Private user profile data"
+    },
+    "/audits/{auditId}": {
+      "schema": "audits",
+      "description": "Audit results linked to users"
+    }
+  }
+}

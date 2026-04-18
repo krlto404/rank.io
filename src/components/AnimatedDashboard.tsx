@@ -1,15 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence, useInView } from 'motion/react';
 import { Search, Loader2, ChevronDown, Sparkles } from 'lucide-react';
 
 export function AnimatedDashboard({ lang }: { lang: 'en' | 'fr' | 'es' }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isInView = useInView(containerRef, { amount: 0.8 }); // Trigger when 80% visible for better UX
   const [phase, setPhase] = useState(0);
   const [typedText, setTypedText] = useState('');
   const [scrollPos, setScrollPos] = useState(0);
   const [innerScroll, setInnerScroll] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
   
-  const targetText = 'eveom.com';
+  const targetText = 'eveom.fr';
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -23,6 +25,14 @@ export function AnimatedDashboard({ lang }: { lang: 'en' | 'fr' | 'es' }) {
     const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
     const runAnimation = async () => {
+      if (!isInView) {
+        setPhase(0);
+        setTypedText('');
+        setScrollPos(0);
+        setInnerScroll(0);
+        return;
+      }
+
       if (phase === 0) {
         setTypedText('');
         setScrollPos(0);
@@ -87,7 +97,7 @@ export function AnimatedDashboard({ lang }: { lang: 'en' | 'fr' | 'es' }) {
     return () => {
       isCancelled = true;
     };
-  }, [phase, typedText, targetText]);
+  }, [phase, typedText, targetText, isInView]);
 
   const t = {
     en: {
@@ -222,23 +232,23 @@ export function AnimatedDashboard({ lang }: { lang: 'en' | 'fr' | 'es' }) {
   }[lang];
 
   return (
-    <div className="relative w-full h-[85vh] sm:h-auto sm:aspect-square md:aspect-video overflow-hidden bg-bg-secondary flex items-center justify-center font-sans rounded-md">
+    <div ref={containerRef} className="relative w-full h-[50vh] sm:h-auto sm:aspect-[16/10] md:aspect-video overflow-hidden bg-white border border-border rounded-[24px] sm:rounded-[32px] flex items-center justify-center font-sans shadow-premium">
       {/* Premium Background */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,_rgba(59,130,246,0.15)_0%,_transparent_50%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_80%,_rgba(34,197,94,0.1)_0%,_transparent_50%)]" />
+      <div className="absolute inset-0 bg-mesh opacity-30" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,_rgba(59,130,246,0.1)_0%,_transparent_50%)]" />
       
       <AnimatePresence mode="wait">
         {phase < 3 ? (
-          <motion.div
-            key="search"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, y: -40, scale: 0.95, filter: "blur(10px)" }}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-            className="w-full max-w-3xl px-8 flex flex-col items-center z-10"
-          >
+            <motion.div
+              key="search"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, y: -40, scale: 0.95, filter: "blur(10px)" }}
+              transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+              className="w-full max-w-2xl px-8 flex flex-col items-center z-10"
+            >
             <motion.h2 
-              className="text-5xl md:text-7xl lg:text-8xl font-bold text-text-primary mb-12 tracking-tighter text-center"
+              className="text-3xl md:text-5xl lg:text-6xl font-extrabold text-text-primary mb-10 tracking-tighter text-center font-display"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.8 }}
@@ -247,23 +257,23 @@ export function AnimatedDashboard({ lang }: { lang: 'en' | 'fr' | 'es' }) {
             </motion.h2>
             
             <motion.div 
-              className="w-full relative bg-surface border border-border rounded-full p-2 pl-8 flex items-center backdrop-blur-xl shadow-soft"
+              className="w-full relative bg-white border border-border rounded-full p-2 pl-8 flex items-center shadow-soft hover:shadow-lg transition-shadow duration-500"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4, duration: 0.8 }}
             >
               <div className="flex-1 flex items-center">
                 {typedText.length === 0 && phase === 0 ? (
-                  <span className="text-text-muted text-lg md:text-2xl font-medium">{t.placeholder}</span>
+                  <span className="text-text-muted text-lg md:text-2xl font-medium opacity-50">{t.placeholder}</span>
                 ) : (
-                  <span className="text-text-primary text-lg md:text-2xl font-medium tracking-tight">
+                  <span className="text-text-primary text-lg md:text-2xl font-bold tracking-tight">
                     {typedText}
-                    <span className="inline-block w-[2px] h-6 bg-primary ml-1 animate-[blink_1s_infinite] align-middle" />
+                    <span className="inline-block w-[3px] h-6 bg-primary ml-1 animate-[blink_1s_infinite] align-middle" />
                   </span>
                 )}
               </div>
               <button 
-                className={`bg-primary text-white px-6 md:px-8 py-3 md:py-4 rounded-full font-bold text-base md:text-lg transition-all duration-300 flex items-center justify-center min-w-[120px] md:min-w-[140px] ${phase === 2 ? 'opacity-80 scale-95' : 'hover:bg-primary/90 hover:scale-105'}`}
+                className={`btn-primary px-6 md:px-10 py-3 md:py-4 !rounded-full text-sm md:text-lg font-bold transition-all duration-300 flex items-center justify-center min-w-[120px] md:min-w-[160px] ${phase === 2 ? 'opacity-80 scale-95' : ''}`}
               >
                 {phase === 2 ? <Loader2 className="w-5 h-5 md:w-6 md:h-6 animate-spin" /> : t.btn}
               </button>
@@ -272,23 +282,21 @@ export function AnimatedDashboard({ lang }: { lang: 'en' | 'fr' | 'es' }) {
         ) : (
           <motion.div
             key="dashboard"
-            initial={{ opacity: 0, y: 40, scale: 0.95, filter: "blur(10px)" }}
+            initial={{ opacity: 0, y: 40, scale: 0.98, filter: "blur(20px)" }}
             animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
             exit={{ opacity: 0, scale: 1.05, filter: "blur(10px)" }}
-            transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-            className="w-full h-full flex flex-col z-10"
+            transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
+            className="w-full h-full flex flex-col z-10 p-4 md:p-8"
           >
             <motion.div 
-              animate={{ y: [0, -8, 0] }}
-              transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-              className="w-full h-full flex flex-col bg-surface/80 backdrop-blur-sm overflow-hidden rounded-md border border-border shadow-soft"
+              className="w-full h-full flex flex-col bg-white overflow-hidden rounded-[20px] md:rounded-[24px] border border-border shadow-premium relative group"
             >
               {/* Header - Fixed */}
-            <div className="p-4 sm:p-6 md:p-8 pb-0 md:pb-0 flex items-center justify-between mb-4 md:mb-6 shrink-0">
-              <h3 className="text-xl md:text-2xl font-bold text-text-primary tracking-tight">{t.domain}</h3>
-              <div className="flex bg-bg-secondary p-1 rounded-sm border border-border relative">
+            <div className="p-4 md:p-6 pb-2 md:pb-2 flex items-center justify-between shrink-0 border-b border-border/50">
+              <h3 className="text-base md:text-xl font-bold text-text-primary tracking-tight font-display">{t.domain}</h3>
+              <div className="flex bg-bg-secondary p-1 rounded-full border border-border relative w-32 md:w-48">
                 <motion.div 
-                  className="absolute top-1 bottom-1 w-[calc(50%-4px)] bg-surface rounded-sm shadow-sm"
+                  className="absolute top-1 bottom-1 w-[calc(50%-4px)] bg-white rounded-full shadow-sm"
                   initial={false}
                   animate={{ 
                     left: scrollPos === 3 ? "50%" : "4px"
@@ -296,14 +304,14 @@ export function AnimatedDashboard({ lang }: { lang: 'en' | 'fr' | 'es' }) {
                   transition={{ type: "spring", stiffness: 400, damping: 30 }}
                 />
                 <div 
-                  className={`px-3 md:px-5 py-1.5 md:py-2 text-xs md:text-sm font-semibold flex items-center gap-2 relative z-10 transition-colors duration-300 w-1/2 justify-center ${scrollPos === 3 ? 'text-text-muted' : 'text-text-primary'}`}
+                  className={`px-3 md:px-5 py-1 md:py-2 text-[10px] md:text-xs font-bold flex items-center gap-1.5 relative z-10 transition-colors duration-300 w-1/2 justify-center ${scrollPos === 3 ? 'text-text-muted' : 'text-text-primary'}`}
                 >
-                  <Sparkles className={`w-3 h-3 md:w-4 md:h-4 ${scrollPos === 3 ? 'text-text-muted' : 'text-primary'}`} /> {t.aiSearch}
+                  <Sparkles className={`w-3 h-3 md:w-4 md:h-4 ${scrollPos === 3 ? 'text-text-muted' : 'text-primary'}`} /> AI
                 </div>
                 <div 
-                  className={`px-3 md:px-5 py-1.5 md:py-2 text-xs md:text-sm font-semibold relative z-10 transition-colors duration-300 w-1/2 text-center ${scrollPos === 3 ? 'text-text-primary' : 'text-text-muted'}`}
+                  className={`px-3 md:px-5 py-1 md:py-2 text-[10px] md:text-xs font-bold relative z-10 transition-colors duration-300 w-1/2 text-center ${scrollPos === 3 ? 'text-text-primary' : 'text-text-muted'}`}
                 >
-                  {t.seo}
+                  SEO
                 </div>
               </div>
             </div>
@@ -316,9 +324,9 @@ export function AnimatedDashboard({ lang }: { lang: 'en' | 'fr' | 'es' }) {
               className="absolute bottom-2 md:bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 md:gap-2 z-20"
             >
               {[0, 1, 2, 3].map((i) => (
-                <div key={i} className="w-6 md:w-8 h-1 bg-border rounded-full overflow-hidden">
+                <div key={i} className="w-6 md:w-8 h-1 bg-border rounded-full overflow-hidden will-change-transform">
                   <motion.div 
-                    className="h-full bg-primary"
+                    className="h-full bg-primary will-change-[width]"
                     initial={{ width: "0%" }}
                     animate={{ width: scrollPos > i ? "100%" : scrollPos === i ? "100%" : "0%" }}
                     transition={{ duration: scrollPos === i ? (i === 0 ? 5 : 6) : 0.2, ease: "linear" }}
@@ -330,7 +338,7 @@ export function AnimatedDashboard({ lang }: { lang: 'en' | 'fr' | 'es' }) {
             {/* Scrollable Content Area */}
             <div className="flex-1 relative overflow-hidden">
               <motion.div 
-                className="absolute top-0 left-0 w-full h-full flex flex-col"
+                className="absolute top-0 left-0 w-full h-full flex flex-col will-change-transform"
                 animate={{ y: `${-scrollPos * 100}%` }}
                 transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
               >
@@ -344,10 +352,10 @@ export function AnimatedDashboard({ lang }: { lang: 'en' | 'fr' | 'es' }) {
                   {/* Top Row */}
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
                   <Card delay={0.1}>
-                    <div className="text-text-muted text-xs md:text-sm font-medium mb-2 md:mb-3">{t.visibility}</div>
+                    <div className="text-text-muted text-[10px] md:text-xs font-medium mb-1 md:mb-2">{t.visibility}</div>
                     <div className="flex items-end gap-2 md:gap-3">
-                      <div className="text-3xl md:text-5xl font-bold text-text-primary tracking-tighter">68</div>
-                      <div className="w-full h-6 md:h-8 mb-1">
+                      <div className="text-2xl md:text-3xl font-bold text-text-primary tracking-tighter">68</div>
+                      <div className="w-full h-4 md:h-6 mb-1">
                         <svg viewBox="0 0 100 30" className="w-full h-full preserve-aspect-ratio-none">
                           <path d="M0,30 Q25,20 50,15 T100,5" fill="none" stroke="url(#primary-grad)" strokeWidth="3" strokeLinecap="round" />
                           <defs>
@@ -361,16 +369,16 @@ export function AnimatedDashboard({ lang }: { lang: 'en' | 'fr' | 'es' }) {
                     </div>
                   </Card>
                   <Card delay={0.2}>
-                    <div className="text-text-muted text-xs md:text-sm font-medium mb-2 md:mb-3">{t.mentions}</div>
-                    <div className="flex items-baseline gap-2 md:gap-3">
-                      <div className="text-2xl md:text-4xl font-bold text-text-primary tracking-tight">340</div>
-                      <div className="text-success text-xs md:text-sm font-bold bg-success/10 px-1.5 md:px-2 py-0.5 rounded">+15%</div>
+                    <div className="text-text-muted text-[10px] md:text-xs font-medium mb-1 md:mb-2">{t.mentions}</div>
+                    <div className="flex items-baseline gap-1.5 md:gap-2">
+                      <div className="text-xl md:text-2xl font-bold text-text-primary tracking-tight">340</div>
+                      <div className="text-success text-[10px] font-bold bg-success/10 px-1 py-0.5 rounded">+15%</div>
                     </div>
                   </Card>
                   <Card delay={0.3} className="hidden md:block">
-                    <div className="text-text-muted text-xs md:text-sm font-medium mb-2 md:mb-3">{t.cited}</div>
-                    <div className="flex items-baseline gap-2 md:gap-3">
-                      <div className="text-2xl md:text-4xl font-bold text-text-primary tracking-tight">125</div>
+                    <div className="text-text-muted text-[10px] md:text-xs font-medium mb-1 md:mb-2">{t.cited}</div>
+                    <div className="flex items-baseline gap-1.5 md:gap-2">
+                      <div className="text-xl md:text-2xl font-bold text-text-primary tracking-tight">125</div>
                     </div>
                   </Card>
                 </div>
@@ -521,9 +529,9 @@ export function AnimatedDashboard({ lang }: { lang: 'en' | 'fr' | 'es' }) {
                     <div className="text-text-muted text-xs md:text-sm font-medium mb-4">{t.competitors}</div>
                     <div className="flex-1 flex flex-col justify-center gap-4">
                       {[
-                        { name: "artefact.com", share: 45, color: "bg-success" },
-                        { name: "ekimetrics.com", share: 35, color: "bg-primary" },
-                        { name: "eveom.com", share: 20, color: "bg-warning" }
+                        { name: "concurrent-a.fr", share: 45, color: "bg-success" },
+                        { name: "concurrent-b.fr", share: 35, color: "bg-primary" },
+                        { name: "eveom.fr", share: 20, color: "bg-error" }
                       ].map((comp, i) => (
                         <div key={i} className="flex items-center gap-3">
                           <div className="w-24 text-xs text-text-secondary truncate">{comp.name}</div>
@@ -830,12 +838,11 @@ export function AnimatedDashboard({ lang }: { lang: 'en' | 'fr' | 'es' }) {
 function Card({ children, className = "", delay = 0 }: { children: React.ReactNode, className?: string, delay?: number }) {
   return (
     <motion.div 
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay, ease: "easeOut" }}
-      className={`relative overflow-hidden bg-surface border border-border rounded-md p-3 md:p-5 shadow-soft backdrop-blur-sm hover:bg-bg-secondary transition-colors group ${className}`}
+      transition={{ duration: 0.8, delay, ease: [0.22, 1, 0.36, 1] }}
+      className={`relative overflow-hidden bg-white border border-border rounded-[24px] p-4 md:p-6 shadow-soft hover:shadow-lg transition-all duration-500 group ${className}`}
     >
-      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-bg-secondary to-transparent -translate-x-[100%] group-hover:animate-[shimmer_1.5s_infinite]" />
       <div className="relative z-10 w-full h-full flex flex-col">
         {children}
       </div>

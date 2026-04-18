@@ -74,8 +74,26 @@
   body {
     font-family: 'Inter', sans-serif;
     color: var(--text-primary);
-    background: var(--bg-primary);
+    background-color: #ffffff;
+    background-image: 
+      linear-gradient(to bottom, #ffffff 0%, transparent 20%, transparent 80%, #ffffff 100%),
+      radial-gradient(ellipse at 50% 50%, 
+        rgba(255, 182, 193, 0.5) 0%, 
+        rgba(255, 218, 185, 0.4) 30%, 
+        rgba(173, 216, 230, 0.4) 60%, 
+        transparent 85%
+      );
+    background-repeat: no-repeat;
+    background-position: center 80px;
+    background-size: 100% 800px, 800px 800px;
     @apply antialiased selection:bg-primary/20 selection:text-primary;
+  }
+
+  @media (min-width: 768px) {
+    body {
+      background-position: center 100px;
+      background-size: 100% 1000px, 100% 1000px;
+    }
   }
 
   h1, h2, h3, h4 {
@@ -151,8 +169,27 @@
       radial-gradient(at 0% 100%, rgba(59, 130, 246, 0.1) 0px, transparent 50%);
   }
 
+  .mask-fade-out {
+    mask-image: linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%);
+  }
+
   .mask-fade-bottom {
     mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+  }
+
+  .bg-landing {
+    background-color: #ffffff !important;
+    background-image: 
+      linear-gradient(to bottom, #ffffff 0%, transparent 20%, transparent 80%, #ffffff 100%),
+      radial-gradient(ellipse at 50% 50%, 
+        rgba(255, 182, 193, 0.5) 0%, 
+        rgba(255, 218, 185, 0.4) 30%, 
+        rgba(173, 216, 230, 0.4) 60%, 
+        transparent 85%
+      ) !important;
+    background-repeat: no-repeat;
+    background-position: center center;
+    background-size: 100% 100%, 100% 100%;
   }
 
   .animate-float {
